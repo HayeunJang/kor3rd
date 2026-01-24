@@ -2,6 +2,7 @@ import { API_URL, SECRET } from "./config.js";
 
 /** JSONP: createSession / ping 같은 짧은 요청용 */
 export function jsonp(params={}) {
+  params.secret = SECRET;
   return new Promise((resolve, reject) => {
     const cb = "cb_" + Math.random().toString(36).slice(2);
     params.callback = cb;
