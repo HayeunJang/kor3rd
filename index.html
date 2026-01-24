@@ -1,12 +1,70 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8">
-  <title>Priming Experiment – Test</title>
+  <meta charset="utf-8"/>
+  <title>Experiment – Step Test</title>
 </head>
 <body>
-  <h1>Priming Experiment – Connection Test</h1>
-  <p>이 페이지는 서버 연결 테스트용입니다.</p>
-  <p>개발자도구(Console)를 열어 주세요.</p>
+  <h1>Step Test</h1>
+
+  <p>
+    PID: <input id="pid" value="TEST01"/>
+    <button id="btnSession">createSession (JSONP)</button>
+  </p>
+
+  <p>
+    <button id="btnRow" disabled>appendRow (POST)</button>
+  </p>
+
+  <pre id="log"></pre>
+
+<script type="module">
+import { createSession, appendRow } from "./js/api.js";
+
+const logEl = document.getElementById("log");
+const pidEl = document.getElementById("pid");
+const btnSession = document.getElementById("btnSession");
+const btnRow = document.getElementById("btnRow");
+
+let session = null;
+
+function log(x){
+  logEl.textContent += (typeof x === "string" ? x : JSON.stringify(x,null,2)) + "\n";
+}
+
+btnSession.onclick = async () => {
+  try {
+    const pid = pidEl.value.trim();
+    session = await createSession(pid, { stage:"test" });
+    log(session);
+    btnRow.disabled = false;
+  } catch(e) {
+    log("ERROR: " + e.message);
+  }
+};
+
+btnRow.onclick = async () => {
+  try {
+    if(!session) throw new Error("No session yet");
+
+    const row = {
+      event: "trial",
+      ts_iso: new Date().toISOString(),
+      pid: session.pid,
+      sessionId: session.sessionId,
+      folderId: session.folderId,
+      phase: "study",
+      itemId: "mushroom",
+      accuracy: 1,
+      notes: "POST appendRow from index.html"
+    };
+
+    const out = await appendRow(row);
+    log(out);
+  } catch(e) {
+    log("ERROR: " + e.message);
+  }
+};
+</script>
 </body>
 </html>
