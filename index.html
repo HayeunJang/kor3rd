@@ -14,31 +14,22 @@
     .row { display:flex; gap:12px; }
     .row > div { flex:1; }
     pre { background:#f7f7f7; padding:12px; border-radius: 8px; overflow:auto; }
-    .badge { display:inline-block; padding: 4px 10px; border-radius:999px; background:#eee; font-weight:600; }
   </style>
 </head>
 <body>
-  <h1>Experiment Start</h1>
+  <h1>Experiment</h1>
 
-  <!-- 0) 시스템 로그 -->
+  <!-- (선택) 디버그 로그: 필요 없으면 카드 전체 삭제 -->
   <div class="card">
-    <div><span class="badge">Status</span> <span id="status">loading…</span></div>
+    <div><b>Status:</b> <span id="status">loading…</span></div>
     <pre id="log"></pre>
   </div>
 
-  <!-- 1) PrimeMode 배정 화면 -->
-  <div class="card" id="screen-assign">
-    <h2>조건 배정</h2>
-    <p>서버에 저장된 각 그룹 수를 참고해서 조건을 배정합니다.</p>
-    <p>배정 결과: <span class="badge" id="assignedGroup">…</span></p>
-    <button id="btnProceedConsent" disabled>동의/참가자정보로 진행</button>
-  </div>
-
-  <!-- 2) Consent + 참가자정보 -->
-  <div class="card hidden" id="screen-consent">
+  <!-- 1) Consent + 참가자정보 (첫 화면) -->
+  <div class="card" id="screen-consent">
     <h2>연구 참여 동의</h2>
     <p style="line-height:1.5">
-      본 연구는 그림을 보고 단어를 말하는 과제를 포함합니다. 응답 시간 및 음성(녹음)이 수집될 수 있습니다(본 단계에서는 아직 저장하지 않습니다).
+      본 연구는 그림을 보고 단어를 말하는 과제를 포함합니다. 응답 시간 및 음성(녹음)이 수집될 수 있습니다.
       언제든 중단할 수 있으며, 동의하지 않으면 참여할 수 없습니다.
     </p>
 
@@ -52,7 +43,7 @@
     <h3>참가자 정보</h3>
 
     <label for="pid">참가자 ID(임의 코드)</label>
-    <input id="pid" placeholder="예: P001 또는 이메일/이름 말고 임의 코드" />
+    <input id="pid" placeholder="예: P001 (이름/이메일 말고 임의 코드)" />
 
     <div class="row">
       <div>
@@ -73,21 +64,17 @@
     <label for="device">기기/브라우저(선택)</label>
     <input id="device" placeholder="예: Windows Edge, Mac Chrome 등 (선택)" />
 
-    <p>
-      현재 배정된 그룹: <span class="badge" id="assignedGroup2">…</span>
-    </p>
-
     <button id="btnStart" disabled>동의 완료 & 세션 시작</button>
   </div>
 
-  <!-- 3) 다음 단계 안내(지금은 jsPsych 아직 안 붙임) -->
+  <!-- 2) 세션 준비 완료 -->
   <div class="card hidden" id="screen-ready">
     <h2>세션 생성 완료</h2>
-    <p>이제부터 Study/4AFC/본 실험을 시작할 수 있습니다.</p>
-    <p><span class="badge">sessionId</span> <span id="sessionIdText"></span></p>
-    <p><span class="badge">folderId</span> <span id="folderIdText"></span></p>
+    <p>이제 Study/4AFC/본 실험을 시작할 수 있습니다.</p>
+    <p><b>sessionId</b>: <span id="sessionIdText"></span></p>
+    <p><b>folderId</b>: <span id="folderIdText"></span></p>
 
-    <!-- 테스트용: row 하나 더 저장 -->
+    <!-- 테스트용: row 하나 저장 -->
     <button id="btnTestRow">테스트 row 저장(POST)</button>
   </div>
 
@@ -97,13 +84,8 @@ import { jsonp, createSession, appendRow } from "./js/api.js";
 const logEl = document.getElementById("log");
 const statusEl = document.getElementById("status");
 
-const screenAssign = document.getElementById("screen-assign");
 const screenConsent = document.getElementById("screen-consent");
 const screenReady = document.getElementById("screen-ready");
-
-const assignedGroupEl = document.getElementById("assignedGroup");
-const assignedGroupEl2 = document.getElementById("assignedGroup2");
-const btnProceedConsent = document.getElementById("btnProceedConsent");
 
 const consentCheck = document.getElementById("consentCheck");
 const pidEl = document.getElementById("pid");
@@ -116,14 +98,13 @@ const sessionIdText = document.getElementById("sessionIdText");
 const folderIdText = document.getElementById("folderIdText");
 const btnTestRow = document.getElementById("btnTestRow");
 
-let assignedGroup = null;   // overt / covert / nonaming
+let assignedGroup = null; // overt / covert / nonaming (참가자에게 표시 안 함)
 let session = null;
 
 function log(x) {
   logEl.textContent += (typeof x === "string" ? x : JSON.stringify(x, null, 2)) + "\n";
 }
 function setStatus(s) { statusEl.textContent = s; }
-
 function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 
@@ -139,10 +120,8 @@ function validateConsentForm() {
 
 /** 3번(biased-coin minimization): 최소그룹을 80% 확률로 선택 */
 async function assignPrimeModeBiasedCoin() {
-  const res = await jsonp({ action:"getGroupCounts" }); // secret은 api.js에서 자동으로 붙이지 않으니, api.js의 jsonp는 그대로면 여기서 secret 넣어야 함
-  // ↑ 주의: 너 api.js의 jsonp가 "secret 자동 포함"이 아니라면 아래처럼 바꿔야 함:
-  // const res = await jsonp({ action:"getGroupCounts", secret: SECRET });
-
+  // api.js의 jsonp가 params.secret을 자동으로 붙이도록 되어 있어야 함
+  const res = await jsonp({ action:"getGroupCounts" });
   if (!res.ok) throw new Error(res.error || "getGroupCounts failed");
 
   const c = res.counts;
@@ -155,37 +134,22 @@ async function assignPrimeModeBiasedCoin() {
   return groups[Math.floor(Math.random() * groups.length)];
 }
 
-/** 너 api.js의 jsonp/createSession이 secret을 내부에서 붙이는 구조라면,
- *  위 assignPrimeModeBiasedCoin의 jsonp 호출이 secret 없이도 동작해야 함.
- *  만약 Unauthorized가 뜨면, api.js의 jsonp에 secret을 포함시키거나,
- *  여기 jsonp 호출에 secret을 추가해야 함.
- */
-
-async function initAssignment() {
-  setStatus("assigning group…");
+/** 페이지 로드 시 백그라운드로 그룹 배정만 해둠(표시/저장 X) */
+async function initAssignmentSilent() {
+  setStatus("loading…");
   try {
-    // 1) 서버 카운트 기반으로 배정
     assignedGroup = await assignPrimeModeBiasedCoin();
-    assignedGroupEl.textContent = assignedGroup;
-    assignedGroupEl2.textContent = assignedGroup;
-
-    btnProceedConsent.disabled = false;
-    setStatus("group assigned (not saved yet)");
-    log({ assignedGroup });
-
-  } catch (e) {
-    setStatus("ERROR during assignment");
-    log("ERROR: " + e.message);
+    log({ assignedGroup, note:"assigned silently (not shown, not saved)" });
+    setStatus("ready for consent");
+  } catch(e) {
+    // 배정 실패해도 실험 자체는 진행 가능하게(최후 fallback: 완전 랜덤)
+    const fallback = ["overt","covert","nonaming"];
+    assignedGroup = fallback[Math.floor(Math.random()*fallback.length)];
+    log("WARN: assignment failed, fallback random. " + e.message);
+    log({ assignedGroup, note:"fallback random" });
+    setStatus("ready for consent");
   }
 }
-
-btnProceedConsent.onclick = () => {
-  hide(screenAssign);
-  show(screenConsent);
-  assignedGroupEl2.textContent = assignedGroup ?? "…";
-  setStatus("waiting consent + participant info");
-  validateConsentForm();
-};
 
 [consentCheck, pidEl, ageEl, genderEl].forEach(el => {
   el.addEventListener("input", validateConsentForm);
@@ -198,21 +162,21 @@ btnStart.onclick = async () => {
 
     const pid = pidEl.value.trim();
     const extraMeta = {
-      primeModeGroup: assignedGroup,
+      primeModeGroup: assignedGroup,  // 참가자에게는 비공개, 서버엔 저장됨
       age: Number(ageEl.value),
       gender: genderEl.value,
       device: deviceEl.value.trim() || "",
       assignedAt_iso: new Date().toISOString()
     };
 
-    // ✅ 여기서 createSession(pid, …) 호출 (동의 + 정보 입력 완료 후)
+    // ✅ consent 후에만 세션 생성/저장
     session = await createSession(pid, extraMeta);
-
     log({ session });
+
     sessionIdText.textContent = session.sessionId;
     folderIdText.textContent = session.folderId;
 
-    // 참가자정보를 별도 event로 한 줄 더 저장(원하면 빼도 됨)
+    // 참가자정보 저장(원하면 빼도 됨)
     await appendRow({
       event: "participant_info",
       ts_iso: new Date().toISOString(),
@@ -226,9 +190,8 @@ btnStart.onclick = async () => {
 
     hide(screenConsent);
     show(screenReady);
-
     setStatus("session ready");
-  } catch (e) {
+  } catch(e) {
     setStatus("ERROR creating session");
     log("ERROR: " + e.message);
   }
@@ -249,14 +212,15 @@ btnTestRow.onclick = async () => {
     });
     log(out);
     setStatus("test row saved");
-  } catch (e) {
+  } catch(e) {
     setStatus("ERROR saving test row");
     log("ERROR: " + e.message);
   }
 };
 
-// 시작: 배정부터
-initAssignment();
+// 시작: 조용히 배정만 해둠
+validateConsentForm();
+initAssignmentSilent();
 </script>
 </body>
 </html>
