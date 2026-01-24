@@ -71,6 +71,21 @@
   <button id="btnContinue">계속</button>
 </div>
 
+  <!-- ================== 2b. Study ================== -->
+<div class="card hidden" id="screen-study">
+  <h2>학습(Study)</h2>
+  <p class="note" id="studyProgress">준비 중…</p>
+
+  <div style="text-align:center; margin-top:12px;">
+    <div id="fixation" class="hidden" style="font-size:48px; line-height:80px;">+</div>
+    <img id="studyImg" class="hidden" style="max-width:420px; max-height:320px;" />
+    <div id="studyLabel" class="hidden" style="font-size:28px; margin-top:10px;"></div>
+  </div>
+
+  <button id="btnStartStudy" class="hidden">학습 시작</button>
+</div>
+
+
 <!-- ================== 3. Contact (PII separated) ================== -->
 <div class="card hidden" id="screen-contact">
   <h2>보상용 연락처</h2>
@@ -114,6 +129,14 @@ const btnContinue = document.getElementById("btnContinue");
 const contactTypeEl = document.getElementById("contactType");
 const contactValueEl = document.getElementById("contactValue");
 const btnSubmitContact = document.getElementById("btnSubmitContact");
+
+const screenStudy = document.getElementById("screen-study");
+const studyProgressEl = document.getElementById("studyProgress");
+const fixationEl = document.getElementById("fixation");
+const studyImgEl = document.getElementById("studyImg");
+const studyLabelEl = document.getElementById("studyLabel");
+const btnStartStudy = document.getElementById("btnStartStudy");
+
 
 /* ---------- STATE ---------- */
 let assignedGroup = null;   // overt / covert / nonaming (참가자에게 안 보임)
@@ -200,7 +223,8 @@ btnStart.onclick = async () => {
 
 btnContinue.onclick = () => {
   hide(screenReady);
-  show(screenContact);
+  show(screenStudy);
+  btnStartStudy.classList.remove("hidden");
 };
 
 btnSubmitContact.onclick = async () => {
@@ -238,4 +262,5 @@ btnSubmitContact.onclick = async () => {
 </script>
 </body>
 </html>
+
 
