@@ -83,6 +83,7 @@
   </div>
 
   <button id="btnStartStudy" class="hidden">학습 시작</button>
+  <button id="btnNextAfterStudy" class="hidden">다음(4지선다 테스트)</button>
 </div>
 
 
@@ -145,7 +146,14 @@ const fixationEl = document.getElementById("fixation");
 const studyImgEl = document.getElementById("studyImg");
 const studyLabelEl = document.getElementById("studyLabel");
 const btnStartStudy = document.getElementById("btnStartStudy");
+const btnNextAfterStudy = document.getElementById("btnNextAfterStudy");
 
+const STUDY_TIMING = {
+  fixation: 150,
+  picOnly: 500,
+  picPlusLabel: 500,
+  iti: 50
+};
   
   /* =========================
    Study 실행 엔진
@@ -176,41 +184,25 @@ async function runStudyPass(passNum) {
     fixationEl.classList.remove("hidden");
     studyImgEl.classList.add("hidden");
     studyLabelEl.classList.add("hidden");
-    await sleep(300);
+    await sleep(STUDY_TIMING.fixation);
 
     // picture only
     fixationEl.classList.add("hidden");
     studyImgEl.src = it.img;
     studyImgEl.classList.remove("hidden");
     const picOn = Date.now();
-    await sleep(800);
+    await sleep(STUDY_TIMING.picOnly);
 
     // picture + label
     studyLabelEl.textContent = it.word;
     studyLabelEl.classList.remove("hidden");
     const labelOn = Date.now();
-    await sleep(800);
+    await sleep(STUDY_TIMING.picPlusLabel);
 
     // clear
     studyImgEl.classList.add("hidden");
     studyLabelEl.classList.add("hidden");
-    await sleep(300);
-
-    // 저장
-    await appendRow({
-      event: "study_trial",
-      ts_iso: new Date().toISOString(),
-      pid: session.pid,
-      sessionId: session.sessionId,
-      primeModeGroup: assignedGroup,
-      phase: "study",
-      study_pass: passNum,
-      trialIndex_phase: t + 1,
-      itemId: it.itemId,
-      targetWord: it.word,
-      picOn_ms: picOn,
-      labelOn_ms: labelOn
-    });
+    await sleep(STUDY_TIMING.iti);
   }
 }
 
@@ -240,6 +232,12 @@ async function runStudy2Passes() {
 
   studyProgressEl.textContent =
     "학습이 끝났습니다. 다음 단계로 이동합니다.";
+
+  btnNextAfterStudy.classList.remove("hidden");
+  btnNextAfterStudy.disabled = false;
+
+  btnStartStudy.classList.add("hidden");
+
 }
 
 /* ---------- STATE ---------- */
@@ -342,6 +340,11 @@ btnStartStudy.onclick = async () => {
   }
 };
 
+btnNextAfterStudy.onclick = () => {
+  // TODO: show(screenAFC) 로 바꿀 예정
+  alert("다음 단계(4AFC)로 이동 — 다음에 4AFC 화면을 붙이면 됩니다.");
+};
+  
 btnSubmitContact.onclick = async () => {
   const phone = contactValueEl.value.trim();
   const phoneOk = /^01[016789]-?\d{3,4}-?\d{4}$/.test(phone);
@@ -377,6 +380,7 @@ btnSubmitContact.onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
