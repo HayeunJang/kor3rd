@@ -79,15 +79,16 @@
     보상 지급 후 삭제됩니다.
   </p>
 
-  <label>연락 방법</label>
-  <select id="contactType">
-    <option value="">선택</option>
-    <option value="phone">전화번호</option>
-    <option value="email">이메일</option>
-  </select>
-
-  <label>연락처</label>
-  <input id="contactValue">
+  <label for="contactValue">보상용 휴대폰 번호</label>
+<input id="contactValue"
+       placeholder="예: 010-1234-5678"
+       inputmode="numeric"
+       autocomplete="tel"
+       autocorrect="off"
+       autocapitalize="off" />
+<div class="note">
+  보상 발송 목적에만 사용되며, 실험 데이터와 분리 저장됩니다.
+</div>
 
   <button id="btnSubmitContact">제출하고 종료</button>
 </div>
@@ -203,22 +204,38 @@ btnContinue.onclick = () => {
 };
 
 btnSubmitContact.onclick = async () => {
-  if (!contactTypeEl.value || !contactValueEl.value.trim()) {
-    alert("연락처를 입력해 주세요.");
+  const phone = contactValueEl.value.trim();
+  const phoneOk = /^01[016789]-?\d{3,4}-?\d{4}$/.test(phone);
+
+  if (!phoneOk) {
+    alert("보상 기프티콘을 받을 휴대폰 번호를 정확히 입력해 주세요.\n예: 010-1234-5678");
     return;
   }
-  await jsonp({
-    action:"appendContact",
-    contact_json: JSON.stringify({
-      pid: session.pid,
-      sessionId: session.sessionId,
-      contact_type: contactTypeEl.value,
-      contact_value: contactValueEl.value.trim()
-    })
-  });
-  alert("제출이 완료되었습니다. 감사합니다!");
-  window.location.href="about:blank";
+
+  btnSubmitContact.disabled = true; // 🔒 잠금
+
+  try {
+    await jsonp({
+      action: "appendContact",
+      contact_json: JSON.stringify({
+        pid: session.pid,
+        sessionId: session.sessionId,
+        contact_type: "phone",
+        contact_value: phone
+      })
+    });
+
+    alert("제출이 완료되었습니다. 참여해 주셔서 감사합니다!");
+    window.location.href = "about:blank";
+
+  } catch (e) {
+    btnSubmitContact.disabled = false; // 실패 시 복구
+    alert("연락처 저장 중 오류가 발생했습니다.\n" + e.message);
+  }
 };
+
+
 </script>
 </body>
 </html>
+
