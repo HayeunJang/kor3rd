@@ -5,76 +5,101 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Experiment</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    body { font-family: system-ui, sans-serif; margin: 24px; }
     .card { max-width: 760px; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     .hidden { display: none; }
     label { display:block; margin: 10px 0 6px; }
     input, select { width: 100%; padding: 8px; font-size: 16px; }
     button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-    .note { color:#444; font-size: 14px; line-height: 1.4; }
-    .loadingBox { margin-top: 12px; padding: 10px; border-radius: 10px; background: #f7f7f7; }
+    .note { font-size: 14px; color:#444; }
+    .loadingBox { margin-top: 12px; padding: 10px; background:#f7f7f7; border-radius:10px; }
     .spinner {
-      display:inline-block; width: 14px; height: 14px;
-      border: 2px solid #ccc; border-top-color: #333;
-      border-radius: 50%; animation: spin 0.8s linear infinite;
-      vertical-align: -2px; margin-right: 8px;
+      display:inline-block; width:14px; height:14px;
+      border:2px solid #ccc; border-top-color:#333;
+      border-radius:50%; animation:spin 0.8s linear infinite;
+      margin-right:8px;
     }
-    @keyframes spin { to { transform: rotate(360deg);} }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
+
 <body>
-  <h1>실험 참여</h1>
+<h1>실험 참여</h1>
 
-  <!-- 1) Consent + 참가자정보 (첫 화면) -->
-  <div class="card" id="screen-consent">
-    <h2>연구 참여 동의</h2>
-    <p style="line-height:1.5">
-      본 연구는 그림을 보고 단어를 말하는 과제를 포함합니다. 응답 시간 및 음성(녹음)이 수집될 수 있습니다.
-      언제든 중단할 수 있으며, 동의하지 않으면 참여할 수 없습니다.
-    </p>
+<!-- ================== 1. Consent + Participant Info ================== -->
+<div class="card" id="screen-consent">
+  <h2>연구 참여 동의</h2>
+  <p>
+    본 연구는 그림을 보고 단어를 말하는 과제를 포함합니다.
+    반응시간과 음성(녹음)이 수집될 수 있습니다.
+    언제든 중단할 수 있으며, 동의하지 않으면 참여할 수 없습니다.
+  </p>
 
-    <label>
-      <input type="checkbox" id="consentCheck"/>
-      위 내용을 읽었고 연구 참여에 동의합니다.
-    </label>
+  <label>
+    <input type="checkbox" id="consentCheck">
+    위 내용을 읽었고 연구 참여에 동의합니다.
+  </label>
 
-    <hr/>
+  <hr>
 
-    <h3>참가자 정보</h3>
+  <h3>참가자 정보</h3>
 
-    <label for="nick">닉네임/이니셜 (2글자 이상)</label>
-    <input id="nick" placeholder="예: HJ, 민수 (실명 X)" />
+  <label>닉네임 / 이니셜 (2글자 이상)</label>
+  <input id="nick" placeholder="예: HJ, MS (실명 X)">
 
-    <label for="birthYM">생년월 (YYYY-MM)</label>
-    <input id="birthYM" type="month" placeholder="YYYY-MM" />
+  <label>생년월</label>
+  <input id="birthYM" type="month">
 
-    <label for="nativeLang">모국어</label>
-    <input id="nativeLang" placeholder="예: 한국어" />
+  <label>모국어</label>
+  <input id="nativeLang" placeholder="예: 한국어">
 
-    <label for="otherLangs">외국어(들)</label>
-    <input id="otherLangs" placeholder="예: 영어, 일본어 (없으면 '없음')" />
-    <div class="note">여러 개면 쉼표로 구분해서 적어주세요.</div>
+  <label>외국어(들)</label>
+  <input id="otherLangs" placeholder="예: 영어, 일본어 (없으면 '없음')">
 
-    <button id="btnStart" disabled>동의하고 시작</button>
+  <button id="btnStart" disabled>동의하고 시작</button>
 
-    <div id="loading" class="loadingBox hidden">
-      <div><span class="spinner"></span><b>세션을 준비 중입니다…</b></div>
-      <div class="note">잠시만 기다려 주세요. (데이터 저장/폴더 생성 중)</div>
-    </div>
+  <div id="loading" class="loadingBox hidden">
+    <div><span class="spinner"></span><b>세션을 준비 중입니다…</b></div>
+    <div class="note">잠시만 기다려 주세요.</div>
   </div>
+</div>
 
-  <!-- 2) 다음 단계(지금은 placeholder) -->
-  <div class="card hidden" id="screen-ready">
-    <h2>준비 완료</h2>
-    <p>이제 Study 단계로 진행합니다.</p>
-    <button id="btnContinue">계속</button>
-  </div>
+<!-- ================== 2. Ready (placeholder) ================== -->
+<div class="card hidden" id="screen-ready">
+  <h2>준비 완료</h2>
+  <p>이제부터 실험을 시작합니다.</p>
+  <button id="btnContinue">계속</button>
+</div>
 
+<!-- ================== 3. Contact (PII separated) ================== -->
+<div class="card hidden" id="screen-contact">
+  <h2>보상용 연락처</h2>
+  <p class="note">
+    이 정보는 실험 데이터와 분리되어 저장되며,
+    보상 지급 후 삭제됩니다.
+  </p>
+
+  <label>연락 방법</label>
+  <select id="contactType">
+    <option value="">선택</option>
+    <option value="phone">전화번호</option>
+    <option value="email">이메일</option>
+  </select>
+
+  <label>연락처</label>
+  <input id="contactValue">
+
+  <button id="btnSubmitContact">제출하고 종료</button>
+</div>
+
+<!-- ================== JS LOGIC ================== -->
 <script type="module">
 import { jsonp, createSession, appendRow } from "./js/api.js";
 
+/* ---------- DOM ---------- */
 const screenConsent = document.getElementById("screen-consent");
-const screenReady = document.getElementById("screen-ready");
+const screenReady   = document.getElementById("screen-ready");
+const screenContact = document.getElementById("screen-contact");
 
 const consentCheck = document.getElementById("consentCheck");
 const nickEl = document.getElementById("nick");
@@ -85,124 +110,115 @@ const btnStart = document.getElementById("btnStart");
 const loadingEl = document.getElementById("loading");
 
 const btnContinue = document.getElementById("btnContinue");
+const contactTypeEl = document.getElementById("contactType");
+const contactValueEl = document.getElementById("contactValue");
+const btnSubmitContact = document.getElementById("btnSubmitContact");
 
-let assignedGroup = null; // overt / covert / nonaming (참가자에게 표시 안 함)
+/* ---------- STATE ---------- */
+let assignedGroup = null;   // overt / covert / nonaming (참가자에게 안 보임)
 let session = null;
 
-// pid 자동 생성: P + YYYYMMDD-HHMMSS + 랜덤4자리
-function generatePid_() {
+/* ---------- UTIL ---------- */
+const show = el => el.classList.remove("hidden");
+const hide = el => el.classList.add("hidden");
+
+function generatePid() {
   const d = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
-  const ymd = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-  const hms = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `P${ymd}-${hms}-${rnd}`;
-}
-
-function show(el) { el.classList.remove("hidden"); }
-function hide(el) { el.classList.add("hidden"); }
-
-function validBirthYM_(v) {
-  return /^\d{4}-\d{2}$/.test(v);
+  return "P" +
+    d.toISOString().replace(/[-:.TZ]/g,"") +
+    "-" + Math.random().toString(36).slice(2,6).toUpperCase();
 }
 
 function validateForm() {
-  const ok =
+  btnStart.disabled = !(
     consentCheck.checked &&
     nickEl.value.trim().length >= 2 &&
-    validBirthYM_(birthYMEl.value.trim()) &&
-    nativeLangEl.value.trim().length >= 1 &&
-    otherLangsEl.value.trim().length >= 1;
-  btnStart.disabled = !ok;
+    /^\d{4}-\d{2}$/.test(birthYMEl.value) &&
+    nativeLangEl.value.trim() &&
+    otherLangsEl.value.trim()
+  );
 }
 
-/** 3번(biased-coin minimization): 최소그룹을 80% 확률로 선택 */
-async function assignPrimeModeBiasedCoin() {
-  // api.js의 jsonp가 params.secret 자동 포함이어야 함
-  const res = await jsonp({ action:"getGroupCounts" });
-  if (!res.ok) throw new Error(res.error || "getGroupCounts failed");
-
-  const c = res.counts;
-  const groups = ["overt","covert","nonaming"];
-  const min = Math.min(...groups.map(g => c[g] ?? 0));
-  const mins = groups.filter(g => (c[g] ?? 0) === min);
-
-  const pBias = 0.8;
-  if (Math.random() < pBias) return mins[Math.floor(Math.random() * mins.length)];
-  return groups[Math.floor(Math.random() * groups.length)];
-}
-
-// 페이지 로드 시 조용히 배정만 해둠(표시/저장 X)
-(async function initAssignmentSilent(){
+/* ---------- GROUP ASSIGNMENT (silent) ---------- */
+async function assignPrimeMode() {
   try {
-    assignedGroup = await assignPrimeModeBiasedCoin();
-  } catch(e) {
-    const fallback = ["overt","covert","nonaming"];
-    assignedGroup = fallback[Math.floor(Math.random()*fallback.length)];
+    const res = await jsonp({ action:"getGroupCounts" });
+    const c = res.counts;
+    const groups = ["overt","covert","nonaming"];
+    const min = Math.min(...groups.map(g=>c[g]||0));
+    const mins = groups.filter(g=>(c[g]||0)===min);
+    return Math.random()<0.8
+      ? mins[Math.floor(Math.random()*mins.length)]
+      : groups[Math.floor(Math.random()*3)];
+  } catch {
+    return ["overt","covert","nonaming"][Math.floor(Math.random()*3)];
   }
-})();
+}
+assignPrimeMode().then(g=>assignedGroup=g);
 
-[consentCheck, nickEl, birthYMEl, nativeLangEl, otherLangsEl].forEach(el => {
-  el.addEventListener("input", validateForm);
-  el.addEventListener("change", validateForm);
-});
+/* ---------- EVENTS ---------- */
+[consentCheck,nickEl,birthYMEl,nativeLangEl,otherLangsEl]
+  .forEach(el=>{
+    el.addEventListener("input",validateForm);
+    el.addEventListener("change",validateForm);
+  });
 
 btnStart.onclick = async () => {
-  // 중복 클릭 방지 + 로딩 표시
   btnStart.disabled = true;
   show(loadingEl);
 
-  try {
-    const pid = generatePid_();
+  const pid = generatePid();
+  const participant = {
+    nick: nickEl.value.trim(),
+    birthYM: birthYMEl.value,
+    nativeLang: nativeLangEl.value.trim(),
+    otherLangs: otherLangsEl.value.trim()
+  };
 
-    const participant = {
-      nick: nickEl.value.trim(),          // 실명 X
-      birthYM: birthYMEl.value.trim(),    // YYYY-MM
-      nativeLang: nativeLangEl.value.trim(),
-      otherLangs: otherLangsEl.value.trim()
-    };
+  session = await createSession(pid, {
+    primeModeGroup: assignedGroup,
+    participant
+  });
 
-    const extraMeta = {
-      primeModeGroup: assignedGroup,
-      participant
-    };
+  await appendRow({
+    event:"participant_info",
+    ts_iso:new Date().toISOString(),
+    pid:session.pid,
+    sessionId:session.sessionId,
+    primeModeGroup:assignedGroup,
+    participant_nick:participant.nick,
+    participant_birthYM:participant.birthYM,
+    participant_nativeLang:participant.nativeLang,
+    participant_otherLangs:participant.otherLangs
+  });
 
-    // ✅ 동의 후 세션 생성(=서버 저장 시작)
-    session = await createSession(pid, extraMeta);
-
-    // 참가자정보 저장(본 시트)
-    await appendRow({
-      event: "participant_info",
-      ts_iso: new Date().toISOString(),
-      pid: session.pid,
-      sessionId: session.sessionId,
-      folderId: session.folderId,
-      primeModeGroup: assignedGroup,
-      participant_nick: participant.nick,
-      participant_birthYM: participant.birthYM,
-      participant_nativeLang: participant.nativeLang,
-      participant_otherLangs: participant.otherLangs
-    });
-
-    // 다음 화면으로
-    hide(screenConsent);
-    hide(loadingEl);
-    show(screenReady);
-
-  } catch(e) {
-    hide(loadingEl);
-    alert("시작 중 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.\n\n" + e.message);
-    // 폼 유효하면 다시 누를 수 있게
-    validateForm();
-  }
+  hide(screenConsent);
+  hide(loadingEl);
+  show(screenReady);
 };
 
 btnContinue.onclick = () => {
-  // 다음 단계에서 여기서 Study로 넘어가게 만들면 됨
-  alert("다음 단계(Study)로 넘어갈 준비 완료. 이제 Study UI를 붙이면 됩니다.");
+  hide(screenReady);
+  show(screenContact);
 };
 
-validateForm();
+btnSubmitContact.onclick = async () => {
+  if (!contactTypeEl.value || !contactValueEl.value.trim()) {
+    alert("연락처를 입력해 주세요.");
+    return;
+  }
+  await jsonp({
+    action:"appendContact",
+    contact_json: JSON.stringify({
+      pid: session.pid,
+      sessionId: session.sessionId,
+      contact_type: contactTypeEl.value,
+      contact_value: contactValueEl.value.trim()
+    })
+  });
+  alert("제출이 완료되었습니다. 감사합니다!");
+  window.location.href="about:blank";
+};
 </script>
 </body>
 </html>
