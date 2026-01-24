@@ -130,6 +130,15 @@ const contactTypeEl = document.getElementById("contactType");
 const contactValueEl = document.getElementById("contactValue");
 const btnSubmitContact = document.getElementById("btnSubmitContact");
 
+const STUDY_ITEMS = [
+  { itemId:"mushroom", img:"./stim/PICTURE_177.png", word:"버섯" },
+  { itemId:"kitchen",  img:"./stim/PICTURE_730.png",  word:"부엌" },
+  { itemId:"spider",   img:"./stim/PICTURE_38.png",   word:"거미" },
+  { itemId:"stairs",   img:"./stim/PICTURE_500.png",   word:"계단" },
+  { itemId:"apple",    img:"./stim/PICTURE_552.png",    word:"사과" },
+  { itemId:"pizza",    img:"./stim/PICTURE_489.png",    word:"피자" }
+];
+  
 const screenStudy = document.getElementById("screen-study");
 const studyProgressEl = document.getElementById("studyProgress");
 const fixationEl = document.getElementById("fixation");
@@ -137,6 +146,101 @@ const studyImgEl = document.getElementById("studyImg");
 const studyLabelEl = document.getElementById("studyLabel");
 const btnStartStudy = document.getElementById("btnStartStudy");
 
+  
+  /* =========================
+   Study 실행 엔진
+   ========================= */
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+async function runStudyPass(passNum) {
+  const order = shuffle(STUDY_ITEMS);
+
+  for (let t = 0; t < order.length; t++) {
+    const it = order[t];
+    studyProgressEl.textContent =
+      `학습 ${passNum}/2 — ${t + 1}/${order.length}`;
+
+    // fixation
+    fixationEl.classList.remove("hidden");
+    studyImgEl.classList.add("hidden");
+    studyLabelEl.classList.add("hidden");
+    await sleep(300);
+
+    // picture only
+    fixationEl.classList.add("hidden");
+    studyImgEl.src = it.img;
+    studyImgEl.classList.remove("hidden");
+    const picOn = Date.now();
+    await sleep(800);
+
+    // picture + label
+    studyLabelEl.textContent = it.word;
+    studyLabelEl.classList.remove("hidden");
+    const labelOn = Date.now();
+    await sleep(800);
+
+    // clear
+    studyImgEl.classList.add("hidden");
+    studyLabelEl.classList.add("hidden");
+    await sleep(300);
+
+    // 저장
+    await appendRow({
+      event: "study_trial",
+      ts_iso: new Date().toISOString(),
+      pid: session.pid,
+      sessionId: session.sessionId,
+      primeModeGroup: assignedGroup,
+      phase: "study",
+      study_pass: passNum,
+      trialIndex_phase: t + 1,
+      itemId: it.itemId,
+      targetWord: it.word,
+      picOn_ms: picOn,
+      labelOn_ms: labelOn
+    });
+  }
+}
+
+async function runStudy2Passes() {
+  btnStartStudy.disabled = true;
+  btnStartStudy.textContent = "학습 진행 중…";
+
+  await appendRow({
+    event: "study_start",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    phase: "study"
+  });
+
+  await runStudyPass(1);
+  await sleep(400);
+  await runStudyPass(2);
+
+  await appendRow({
+    event: "study_end",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    phase: "study"
+  });
+
+  studyProgressEl.textContent =
+    "학습이 끝났습니다. 다음 단계로 이동합니다.";
+}
 
 /* ---------- STATE ---------- */
 let assignedGroup = null;   // overt / covert / nonaming (참가자에게 안 보임)
@@ -227,6 +331,17 @@ btnContinue.onclick = () => {
   btnStartStudy.classList.remove("hidden");
 };
 
+btnStartStudy.onclick = async () => {
+  try {
+    await runStudy2Passes();
+    // TODO: 다음 단계 (4AFC)로 화면 전환
+  } catch (e) {
+    alert("학습 중 오류가 발생했습니다.\n" + e.message);
+    btnStartStudy.disabled = false;
+    btnStartStudy.textContent = "학습 시작";
+  }
+};
+
 btnSubmitContact.onclick = async () => {
   const phone = contactValueEl.value.trim();
   const phoneOk = /^01[016789]-?\d{3,4}-?\d{4}$/.test(phone);
@@ -262,5 +377,6 @@ btnSubmitContact.onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
