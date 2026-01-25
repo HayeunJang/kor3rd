@@ -1,0 +1,5 @@
+prime_syll,target_syll,sharedUnit,prime_pic,target_pic,primeId,targetId
+CV,CVC,body,PICTURE_105.png,PICTURE_181.png,Deer,Triangle
+CVC,CV,nucleus,PICTURE_68.png,PICTURE_724.png,Candle,Whale
+CV,CV,onset,PICTURE_38.png,PICTURE_369.png,Spider,Pot
+CVC,CVC,rime,PICTURE_588.png,PICTURE_110.png,Bracelet,Desk
