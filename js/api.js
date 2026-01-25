@@ -61,6 +61,8 @@ export async function blobToBase64(blob) {
   });
 }
 
+import { API_URL, SECRET } from "./config.js";
+
 export async function uploadAudioBlob(blob, meta) {
   const base64 = await blobToBase64(blob);
 
@@ -69,7 +71,7 @@ export async function uploadAudioBlob(blob, meta) {
     secret: SECRET,
     pid: meta.pid,
     sessionId: meta.sessionId,
-    folderId: meta.folderId,           // ★ session.folderId 직접 참조 말고 meta로
+    folderId: meta.folderId,
     filename: meta.filename,
     mimeType: blob.type || "audio/webm",
     base64
@@ -79,19 +81,14 @@ export async function uploadAudioBlob(blob, meta) {
     pid: payload.pid, sessionId: payload.sessionId, folderId: payload.folderId,
     filename: payload.filename, mimeType: payload.mimeType, b64len: base64.length
   });
-
+  
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type":"application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
-  console.log("upload status", res.status);
-
   const json = await res.json();
-  console.log("upload resp", json);
-
   if (!json.ok) throw new Error(json.error || "uploadAudio failed");
   return json;
 }
-
