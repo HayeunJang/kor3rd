@@ -225,6 +225,7 @@
 <!-- ================== JS LOGIC ================== -->
 <script type="module">
 import { jsonp, createSession, appendRow } from "./js/api.js";
+import { uploadAudioBlob } from "./js/api.js";
 
 /* ---------- DOM ---------- */
 const screenConsent = document.getElementById("screen-consent");
@@ -1143,30 +1144,6 @@ async function pumpUploadQueue() {
   uploading = false;
 }
 
-async function blobToBase64(blob) {
-  const buf = await blob.arrayBuffer();
-  let binary = "";
-  const bytes = new Uint8Array(buf);
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-async function uploadAudioBlob(blob, meta) {
-  const base64 = await blobToBase64(blob);
-
-  const payload = {
-    action: "uploadAudio",
-    secret: SECRET,                 // ★ 반드시 필요
-    pid: meta.pid,
-    sessionId: meta.sessionId,
-    folderId: session.folderId,     // ★ createSession에서 받은 값
-    filename: `${meta.type}_${meta.trialId}_${Date.now()}.webm`,
-    mimeType: blob.type || "audio/webm",
-    base64: base64
-  };
 
   const res = await fetch(API_URL, {
     method: "POST",
@@ -1182,15 +1159,6 @@ async function uploadAudioBlob(blob, meta) {
   }
 }
 
-function blobToBase64(blob) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      resolve(reader.result.split(",")[1]); // data:...;base64, 제거
-    };
-    reader.readAsDataURL(blob);
-  });
-}
 
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
@@ -1370,6 +1338,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
