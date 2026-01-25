@@ -84,6 +84,20 @@
 
   <button id="btnStartStudy" class="hidden">학습 시작</button>
   <button id="btnNextAfterStudy" class="hidden">다음(4지선다 테스트)</button>
+
+</div>
+  
+<!-- ================== 2c. Study test- 4AFC ================== -->
+<div class="card hidden" id="screen-afc">
+  <h2>4지선다 테스트</h2>
+  <p class="note" id="afcProgress"></p>
+
+  <div style="text-align:center;">
+    <img id="afcImg" style="max-width:420px; max-height:320px;" />
+  </div>
+
+  <div id="afcChoices" style="margin-top:16px;"></div>
+  <p class="note" id="afcTimer"></p>
 </div>
 
 
@@ -148,13 +162,20 @@ const studyLabelEl = document.getElementById("studyLabel");
 const btnStartStudy = document.getElementById("btnStartStudy");
 const btnNextAfterStudy = document.getElementById("btnNextAfterStudy");
 
+
 const STUDY_TIMING = {
   fixation: 150,
   picOnly: 500,
   picPlusLabel: 500,
   iti: 50
 };
-  
+
+const screenAFC = document.getElementById("screen-afc");
+const afcImgEl = document.getElementById("afcImg");
+const afcChoicesEl = document.getElementById("afcChoices");
+const afcProgressEl = document.getElementById("afcProgress");
+const afcTimerEl = document.getElementById("afcTimer");
+
   /* =========================
    Study 실행 엔진
    ========================= */
@@ -231,13 +252,19 @@ async function runStudy2Passes() {
   });
 
   studyProgressEl.textContent =
-    "학습이 끝났습니다. 다음 단계로 이동합니다.";
+  "학습이 끝났습니다. 다음 단계로 이동해 주세요.";
 
+  btnStartStudy.classList.add("hidden");
   btnNextAfterStudy.classList.remove("hidden");
   btnNextAfterStudy.disabled = false;
 
-  btnStartStudy.classList.add("hidden");
 
+}
+  
+function getRandomDistractors(correctItem, allItems, n = 3) {
+  const pool = allItems.filter(it => it.itemId !== correctItem.itemId);
+  const shuffled = shuffle(pool);
+  return shuffled.slice(0, n);
 }
 
 /* ---------- STATE ---------- */
@@ -263,6 +290,111 @@ function validateForm() {
     nativeLangEl.value.trim() &&
     otherLangsEl.value.trim()
   );
+}
+
+const AFC_TIME_LIMIT = 2000; // 2초
+let afcOrder = [];
+let afcIndex = 0;
+let afcTimer = null;
+
+function startAFC() {
+  afcOrder = shuffle(STUDY_ITEMS);
+  afcIndex = 0;
+
+  appendRow({
+    event: "afc_start",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    phase: "afc"
+  });
+
+  runNextAFCTrial();
+}
+
+function runNextAFCTrial() {
+  if (afcIndex >= afcOrder.length) {
+    endAFC();
+    return;
+  }
+
+  const it = afcOrder[afcIndex];
+  afcProgressEl.textContent =
+    `문항 ${afcIndex + 1} / ${afcOrder.length}`;
+
+  afcImgEl.src = it.img;
+
+  // 선택지 구성
+  const distractors = getRandomDistractors(it, STUDY_ITEMS, 3);
+  const options = shuffle([
+    { word: it.word, correct: true },
+    ...distractors.map(d => ({ word: d.word, correct: false }))
+  ]);
+
+  afcChoicesEl.innerHTML = "";
+  const trialStart = Date.now();
+
+  options.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.textContent = opt.word;
+    btn.style.display = "block";
+    btn.style.margin = "8px auto";
+    btn.onclick = () => handleAFCResponse(opt, trialStart);
+    afcChoicesEl.appendChild(btn);
+  });
+
+  let remaining = AFC_TIME_LIMIT;
+  afcTimerEl.textContent = `남은 시간: ${remaining} ms`;
+
+  afcTimer = setInterval(() => {
+    remaining -= 100;
+    afcTimerEl.textContent = `남은 시간: ${remaining} ms`;
+    if (remaining <= 0) {
+      clearInterval(afcTimer);
+      handleAFCResponse(null, trialStart); // timeout
+    }
+  }, 100);
+}
+
+function handleAFCResponse(opt, trialStart) {
+  if (afcTimer) clearInterval(afcTimer);
+
+  const rt = Date.now() - trialStart;
+  const correct = opt ? opt.correct : false;
+  const responseWord = opt ? opt.word : "";
+
+  const it = afcOrder[afcIndex];
+
+  appendRow({
+    event: "afc_trial",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    primeModeGroup: assignedGroup,
+    phase: "afc",
+    trialIndex_phase: afcIndex + 1,
+    itemId: it.itemId,
+    targetWord: it.word,
+    responseWord,
+    correct,
+    rt_ms: rt
+  });
+
+  afcIndex++;
+  runNextAFCTrial();
+}
+
+function endAFC() {
+  appendRow({
+    event: "afc_end",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    phase: "afc"
+  });
+
+  alert("4지선다 테스트가 끝났습니다.");
+  // 다음 단계: 오답 재학습 or 본 실험
 }
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
@@ -341,8 +473,9 @@ btnStartStudy.onclick = async () => {
 };
 
 btnNextAfterStudy.onclick = () => {
-  // TODO: show(screenAFC) 로 바꿀 예정
-  alert("다음 단계(4AFC)로 이동 — 다음에 4AFC 화면을 붙이면 됩니다.");
+  hide(screenStudy);
+  show(screenAFC);   
+  startAFC();        
 };
   
 btnSubmitContact.onclick = async () => {
@@ -380,6 +513,7 @@ btnSubmitContact.onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
