@@ -26,6 +26,11 @@
     button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
     .note { font-size: 14px; color:#444; }
     .loadingBox { margin-top: 12px; padding: 10px; background:#f7f7f7; border-radius:10px; }
+    .study-instruction {
+      font-size: 16px;      /* consent 문구랑 비슷한 크기 */
+      line-height: 1.6;
+      color: #000;          /* 회색 말고 검정 */
+    }
     .spinner {
       display:inline-block; width:14px; height:14px;
       border:2px solid #ccc; border-top-color:#333;
@@ -81,17 +86,17 @@
   </div>
 </div>
 
-<!-- ================== 2. Ready (placeholder) ================== -->
+<!-- ================== Ready ================== -->
 <div class="card hidden" id="screen-ready">
   <h2>준비 완료</h2>
   <p>이제부터 실험을 시작합니다.</p>
   <button id="btnContinue">계속</button>
 </div>
 
-  <!-- ================== 2b. Study ================== -->
+  <!-- ================== 2. Study ================== -->
 <div class="card hidden" id="screen-study">
   <h2>학습(Study)</h2>
-  <p class="note" id="studyProgress">
+  <p class="note study-instruction" id="studyProgress">
     이 학습 단계에서는 그림과 함께 해당하는 단어를 미리 보여드립니다.<br>
     이후 단계에서는 글자가 없이 그림만 제시되기 때문에,<br>
     그림과 단어의 연결을 잘 익혀 주세요.  <br><br>
@@ -122,10 +127,12 @@
   </div>
 </div>
   
-<!-- ================== 2c. Study test- 4AFC ================== -->
+<!-- ================== 2-2. Study test- 4AFC ================== -->
 <div class="card hidden" id="screen-afc">
   <h2>4지선다 테스트</h2>
-  <p class="note" id="afcProgress"></p>
+  <p class="note" id="afcProgress">
+    제시되는 그림에 해당하는 단어를 눌러주세요.
+  </p>
 
   <div style="text-align:center;">
     <img id="afcImg" style="max-width:420px; max-height:320px;" />
@@ -137,8 +144,20 @@
   <button id="btnNextAFC" class="hidden">다음</button>
 </div>
 
+<!-- ================== 2-3. 4AFC 결과/분기 ================== -->
+<div class="card hidden" id="screen-afc-result">
+  <h2>확인 테스트 결과</h2>
+  <p id="afcResultText"></p>
 
-<!-- ================== 3. Contact (PII separated) ================== -->
+  <div id="afcResultButtons" style="margin-top:16px; text-align:center;">
+    <button id="btnAfcRemedial" class="hidden">오답만 다시 학습하고 재시험</button>
+    <button id="btnAfcProceed" class="hidden">다음 단계로 진행</button>
+  </div>
+</div>
+
+<!-- ================== 3. 그림-이름대기 ================== -->
+  
+<!-- ================== 4. Contact (PII separated) ================== -->
 <div class="card hidden" id="screen-contact">
   <h2>보상용 연락처</h2>
   <p class="note">
@@ -214,6 +233,13 @@ const afcProgressEl = document.getElementById("afcProgress");
 const afcTimerEl = document.getElementById("afcTimer");
 const btnNextAFC = document.getElementById("btnNextAFC");
 
+const AFC_THRESHOLD = 0.80; // 80%
+
+const screenAfcResult = document.getElementById("screen-afc-result");
+const afcResultTextEl = document.getElementById("afcResultText");
+const btnAfcRemedial = document.getElementById("btnAfcRemedial");
+const btnAfcProceed = document.getElementById("btnAfcProceed");
+
   /* =========================
    Study 실행 엔진
    ========================= */
@@ -231,39 +257,32 @@ function shuffle(arr) {
   return a;
 }
 
-async function runStudyPass(passNum) {
-  const order = shuffle(STUDY_ITEMS);
-
+async function runStudyPass(passNum, items) {
+  const order = shuffle(items);
   for (let t = 0; t < order.length; t++) {
     const it = order[t];
-    studyProgressEl.textContent =
-      `학습 ${passNum}/2 — ${t + 1}/${order.length}`;
+    studyProgressEl.textContent = `학습 ${passNum}/1 — ${t+1}/${order.length}`;
 
-    // fixation
     fixationEl.classList.remove("hidden");
     studyImgEl.classList.add("hidden");
     studyLabelEl.classList.add("hidden");
-    await sleep(STUDY_TIMING.fixation);
+    await sleep(150);
 
-    // picture only
     fixationEl.classList.add("hidden");
     studyImgEl.src = it.img;
     studyImgEl.classList.remove("hidden");
-    const picOn = Date.now();
-    await sleep(STUDY_TIMING.picOnly);
+    await sleep(450);
 
-    // picture + label
     studyLabelEl.textContent = it.word;
     studyLabelEl.classList.remove("hidden");
-    const labelOn = Date.now();
-    await sleep(STUDY_TIMING.picPlusLabel);
+    await sleep(450);
 
-    // clear
     studyImgEl.classList.add("hidden");
     studyLabelEl.classList.add("hidden");
-    await sleep(STUDY_TIMING.iti);
+    await sleep(150);
   }
 }
+
 
 async function runStudy2Passes() {
   // 🔒 학습 중 버튼 숨김
@@ -282,9 +301,9 @@ async function runStudy2Passes() {
   });
 
   // ---- 여기서부터 실제 학습 ----
-  await runStudyPass(1);
-  await sleep(400);
-  await runStudyPass(2);
+  await runStudyPass(1, STUDY_ITEMS);
+  await sleep(300);
+  await runStudyPass(2, STUDY_ITEMS);
 
   await appendRow({
     event: "study_end",
@@ -342,8 +361,10 @@ let afcOrder = [];
 let afcIndex = 0;
 let afcTimer = null;
 
-function startAFC() {
-  afcOrder = shuffle(STUDY_ITEMS);
+function startAFC(items, phaseName) {
+  afcPhaseName = phaseName;     // "afc1" or "afc2"
+  afcResponses = [];            // 새 phase 시작 시 초기화
+  afcOrder = shuffle(items);
   afcIndex = 0;
 
   appendRow({
@@ -351,11 +372,12 @@ function startAFC() {
     ts_iso: new Date().toISOString(),
     pid: session.pid,
     sessionId: session.sessionId,
-    phase: "afc"
+    phase: afcPhaseName
   });
 
   runNextAFCTrial();
 }
+
 
 function runNextAFCTrial() {
   if (afcIndex >= afcOrder.length) {
@@ -441,12 +463,60 @@ function endAFC() {
     ts_iso: new Date().toISOString(),
     pid: session.pid,
     sessionId: session.sessionId,
-    phase: "afc"
+    phase: afcPhaseName
   });
 
-  alert("4지선다 테스트가 끝났습니다.");
-  // 다음 단계: 오답 재학습 or 본 실험
+  // --- 정확도 계산 ---
+  const total = afcResponses.length;
+  const nCorrect = afcResponses.filter(r => r.correct).length;
+  const acc = total ? (nCorrect / total) : 0;
+
+  // 오답 아이템 목록(afc1에서만 사용)
+  if (afcPhaseName === "afc1") {
+    const wrongIds = new Set(afcResponses.filter(r => !r.correct).map(r => r.itemId));
+    afcWrongItems = STUDY_ITEMS.filter(it => wrongIds.has(it.itemId));
+  }
+
+  // --- 결과 화면 표시 ---
+  hide(screenAFC);
+  show(screenAfcResult);
+
+  const pct = Math.round(acc * 100);
+  if (acc >= AFC_THRESHOLD) {
+    afcResultTextEl.innerHTML =
+      `정확도: <b>${pct}%</b><br><br>` +
+      `확인 테스트를 통과했습니다. 다음 단계로 진행해 주세요.`;
+
+    btnAfcProceed.classList.remove("hidden");
+    btnAfcRemedial.classList.add("hidden");
+  } else {
+    // 기준 미달
+    if (afcPhaseName === "afc1" && !remedialUsed) {
+      afcResultTextEl.innerHTML =
+        `정확도: <b>${pct}%</b><br><br>` +
+        `기준에 미달하여, <b>틀린 항목만</b> 다시 학습한 뒤 재시험을 진행합니다.`;
+
+      btnAfcRemedial.classList.remove("hidden");
+      btnAfcProceed.classList.add("hidden");
+    } else {
+      // 재시험(afc2)에서도 미달이면 종료 처리(원하면 다른 정책 가능)
+      afcResultTextEl.innerHTML =
+        `정확도: <b>${pct}%</b><br><br>` +
+        `아쉽지만 기준에 미달하여 실험을 계속 진행하기 어렵습니다.<br>` +
+        `참여해 주셔서 감사합니다.`;
+
+      btnAfcRemedial.classList.add("hidden");
+      btnAfcProceed.classList.add("hidden");
+      
+      // 🔒 연락처 화면으로 보내지 않음
+      // (원하면 3초 후 자동 종료)
+      setTimeout(() => {
+        window.location.href = "about:blank";
+      }, 3000);
+    }
+  }
 }
+
 
 function lockAFCTrial(opt, trialStart) {
   const rt = opt ? (Date.now() - trialStart) : null;
@@ -462,6 +532,20 @@ function lockAFCTrial(opt, trialStart) {
     : "응답이 기록되었습니다.";
 
   const it = afcOrder[afcIndex];
+  const rt = opt ? (Date.now() - trialStart) : null;
+  const correct = opt ? opt.correct : false;
+  const responseWord = opt ? opt.word : "";
+  const timeout = (opt === null);
+  
+  // ✅ 메모리 누적 (정확도 계산용)
+  afcResponses.push({
+    itemId: it.itemId,
+    targetWord: it.word,
+    responseWord,
+    correct,
+    timeout,
+    rt_ms: rt
+  });
 
   // 결과 저장 (여기서부터 핵심 데이터)
   appendRow({
@@ -470,7 +554,7 @@ function lockAFCTrial(opt, trialStart) {
     pid: session.pid,
     sessionId: session.sessionId,
     primeModeGroup: assignedGroup,
-    phase: "afc",
+    phase: afcPhaseName,            // ★ "afc1" / "afc2"
     trialIndex_phase: afcIndex + 1,
     itemId: it.itemId,
     targetWord: it.word,
@@ -484,6 +568,12 @@ function lockAFCTrial(opt, trialStart) {
   btnNextAFC.classList.remove("hidden");
   btnNextAFC.disabled = false;
 }
+
+const AFC_THRESHOLD = 0.80;
+let afcPhaseName = "afc1";           // "afc1" 또는 "afc2"
+let afcResponses = [];               // 현재 phase 응답 누적
+let afcWrongItems = [];              // afc1 오답 item 리스트
+let remedialUsed = false;            // 오답 재학습/재시험은 1번만
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
 async function assignPrimeMode() {
@@ -562,10 +652,54 @@ btnStartStudy.onclick = async () => {
 
 btnNextAfterStudy.onclick = () => {
   hide(screenStudy);
-  show(screenAFC);   
-  startAFC();        
+  show(screenAFC);
+  startAFC(STUDY_ITEMS, "afc1");   // ★ 1차 테스트 시작
 };
-  
+
+btnAfcRemedial.onclick = async () => {
+  remedialUsed = true;
+
+  // 오답이 0개면 사실상 통과로 처리 가능
+  if (afcWrongItems.length === 0) {
+    hide(screenAfcResult);
+    // 다음 단계로
+    btnAfcProceed.click();
+    return;
+  }
+
+  // 오답만 학습 1회
+  hide(screenAfcResult);
+  show(screenStudy);
+
+  // 학습 중 버튼 숨김
+  btnStartStudy.classList.add("hidden");
+  btnNextAfterStudy.classList.add("hidden");
+
+  // 안내문 업데이트
+  studyProgressEl.innerHTML =
+    "틀린 항목만 다시 학습합니다.<br>" +
+    "그림과 단어를 잘 보고 기억해 주세요.";
+
+  await runStudyPass(1, afcWrongItems);
+
+  // 학습 끝 → 재시험 버튼(여기서는 바로 재시험으로 가는 버튼을 재활용)
+  studyProgressEl.textContent = "재시험으로 이동해 주세요.";
+  btnNextAfterStudy.textContent = "재시험 시작";
+  btnNextAfterStudy.classList.remove("hidden");
+
+  btnNextAfterStudy.onclick = () => {
+    hide(screenStudy);
+    show(screenAFC);
+    startAFC(afcWrongItems, "afc2");   // ★ 오답만 재시험
+  };
+};
+
+btnAfcProceed.onclick = () => {
+  hide(screenAfcResult);
+  alert("다음 단계(본 실험)로 이동 — 다음에 priming task 화면을 붙이면 됩니다.");
+  // 여기서 show(screenPriming) 같은 걸로 연결할 예정
+};
+
 btnSubmitContact.onclick = async () => {
   const phone = contactValueEl.value.trim();
   const phoneOk = /^01[016789]-?\d{3,4}-?\d{4}$/.test(phone);
@@ -606,6 +740,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
