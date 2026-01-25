@@ -1003,6 +1003,7 @@ async function runPrimingTrial(trial) {
   
   // ✅ target 업로드: 10% 샘플 + 말한 경우만
   let targetAudioFileId = "";
+  
   if (targetRec.blob && targetRec.blob.size > 1500 && targetRT !== null && Math.random() < 0.10) {
     const meta = {
       pid: session.pid,
@@ -1382,6 +1383,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
