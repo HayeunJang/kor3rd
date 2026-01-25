@@ -48,7 +48,6 @@ export async function appendRow(row) {
   return data;
 }
 
-// api.js
 export async function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -60,8 +59,6 @@ export async function blobToBase64(blob) {
     reader.readAsDataURL(blob);
   });
 }
-
-import { API_URL, SECRET } from "./config.js";
 
 export async function uploadAudioBlob(blob, meta) {
   const base64 = await blobToBase64(blob);
@@ -77,11 +74,6 @@ export async function uploadAudioBlob(blob, meta) {
     base64
   };
 
-  console.log("upload payload", {
-    pid: payload.pid, sessionId: payload.sessionId, folderId: payload.folderId,
-    filename: payload.filename, mimeType: payload.mimeType, b64len: base64.length
-  });
-  
   const res = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
