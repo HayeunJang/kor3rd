@@ -928,7 +928,7 @@ async function runPrimingTrial(trial) {
   if (assignedGroup === "overt") {
     statusEl.textContent = "말하세요";
 
-    const res = await recordPrimeWithVoiceKey(1200);
+    const res = await recordPrimeWithVoiceKey(2000);
     primeVoiceRT = res.prime_voice_rt_ms;
     primeAudioBlob = res.audio_blob;
 
@@ -952,14 +952,14 @@ async function runPrimingTrial(trial) {
 
   } else if (assignedGroup === "covert") {
     statusEl.textContent = "속으로 말하세요";
-    await sleep(1200);
+    await sleep(2000);
 
   } else {
     // no-naming: animacy decision
     statusEl.textContent = "생물인지 무생물인지 선택하세요";
     animacyButtonsEl.classList.remove("hidden");
 
-    animacyResp = await getAnimacyResponse(1200);
+    animacyResp = await getAnimacyResponse(2000);
 
     animacyButtonsEl.classList.add("hidden");
   }
@@ -974,7 +974,7 @@ async function runPrimingTrial(trial) {
   imgEl.classList.remove("hidden");
   statusEl.textContent = "말하세요";
 
-  const targetRT = await detectVoiceOnset(2000);
+  const targetRT = await detectVoiceOnset(3000);
 
   /* ---------- 저장 ---------- */
   appendRow({
@@ -1323,6 +1323,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
