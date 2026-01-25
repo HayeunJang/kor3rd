@@ -997,7 +997,22 @@ async function runPrimingTrial(trial) {
   imgEl.classList.remove("hidden");
   statusEl.textContent = "말하세요";
 
-  const targetRT = await detectVoiceOnset(3000);
+  const tStart = Date.now();
+  const targetRec = await recordWindow(3000);  // onset + blob 같이 얻기
+  const targetRT = targetRec.onset_ms;
+  
+  // ✅ target 업로드: 10% 샘플 + 말한 경우만
+  let targetAudioFileId = "";
+  if (targetRec.blob && targetRec.blob.size > 1500 && targetRT !== null && Math.random() < 0.10) {
+    const meta = {
+      pid: session.pid,
+      sessionId: session.sessionId,
+      folderId: session.folderId,
+      filename: `${session.pid}_${trial.trialId}_target_${Date.now()}.webm`
+    };
+    const up = await uploadAudioBlob(targetRec.blob, meta);
+    targetAudioFileId = up.fileId || "";
+  }
 
   /* ---------- 저장 ---------- */
   appendRow({
@@ -1022,6 +1037,9 @@ async function runPrimingTrial(trial) {
     // target
     target_voice_rt_ms: targetRT,
     timeout: targetRT === null
+    target_audio_fileId: targetAudioFileId,
+    target_voice_rt_ms: targetRT,
+    timeout: targetRT === null,
   });
 
   /* ---------- ITI ---------- */
@@ -1030,6 +1048,24 @@ async function runPrimingTrial(trial) {
   await sleep(400);
 }
 
+async function recordWindow(maxMs = 2000, threshold = VOICE_THRESHOLD) {
+  const chunks = [];
+  const recorder = new MediaRecorder(micStream, { mimeType: "audio/webm;codecs=opus" });
+
+  recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+  recorder.start(250); // timeslice: 짧은 녹음에서 blob 비는 문제 방지
+
+  const onset = await detectVoiceOnset(maxMs, threshold);
+
+  // 윈도우 끝까지 녹음 유지(원하면 onset+300ms 같은 정책도 가능)
+  await sleep( Math.max(0, maxMs - (onset ?? maxMs)) );
+
+  recorder.stop();
+  await new Promise(r => recorder.onstop = r);
+
+  const blob = new Blob(chunks, { type: "audio/webm" });
+  return { onset_ms: onset, blob };
+}
   
 async function runPrimingExperiment(trials) {
   hide(screenAfcResult);
@@ -1346,6 +1382,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
