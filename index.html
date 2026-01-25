@@ -224,18 +224,14 @@ const btnStart = document.getElementById("btnStart");
 const loadingEl = document.getElementById("loading");
 
 const btnContinue = document.getElementById("btnContinue");
-const contactTypeEl = document.getElementById("contactType");
 const contactValueEl = document.getElementById("contactValue");
 const btnSubmitContact = document.getElementById("btnSubmitContact");
 
-const STUDY_ITEMS = [
-  { itemId:"mushroom", img:"./stim/PICTURE_177.png", word:"버섯" },
-  { itemId:"kitchen",  img:"./stim/PICTURE_730.png",  word:"부엌" },
-  { itemId:"spider",   img:"./stim/PICTURE_38.png",   word:"거미" },
-  { itemId:"stairs",   img:"./stim/PICTURE_500.png",   word:"계단" },
-  { itemId:"apple",    img:"./stim/PICTURE_552.png",    word:"사과" },
-  { itemId:"pizza",    img:"./stim/PICTURE_489.png",    word:"피자" }
-];
+const ITEMS_CSV = "./stim/items_test.csv";
+const PAIRS_CSV = "./stim/pairs_test.csv";
+  
+let STUDY_ITEMS = [];
+let PRIMING_TRIALS = [];
   
 const screenStudy = document.getElementById("screen-study");
 const studyProgressEl = document.getElementById("studyProgress");
@@ -291,8 +287,144 @@ async function initMic() {
   source.connect(analyser);
 }
 
+async function loadCSV(path) {
+  const res = await fetch(path);
+  if (!res.ok) {
+    throw new Error(`CSV load failed: ${path}`);
+  }
+
+  const text = await res.text();
+  const lines = text.trim().split(/\r?\n/);
+  const headers = lines[0].split(",").map(h => h.trim());
+
+  return lines.slice(1).map(line => {
+    const cells = line.split(",").map(c => c.trim());
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = cells[i] ?? "";
+    });
+    return obj;
+  });
+}
+
+async function loadItemsFromCSV() {
+  const rows = await loadCSV(ITEMS_CSV);
+  const items = {};
+
+  rows.forEach(r => {
+    if (!r.itemId) return;
+
+    items[r.itemId] = {
+      itemId: r.itemId,
+      word: r.word,
+      img: "./stim/" + r.img,   // CSV에는 파일명만
+      animacy: r.animacy || ""
+    };
+  });
+
+  if (Object.keys(items).length === 0) {
+    throw new Error("No items loaded from ITEMS_CSV");
+  }
+
+  return items;
+}
+
+async function loadPairSpecsFromCSV() {
+  const rows = await loadCSV(PAIRS_CSV);
+
+  return rows.map(r => ({
+    sharedUnit: r.sharedUnit,
+    primeId: r.primeId,
+    targetId: r.targetId
+  }));
+}
+
+async function loadAllStimuli() {
+  const ITEMS = await loadItemsFromCSV();
+  const PAIR_SPECS = await loadPairSpecsFromCSV();
+
+  const STUDY_ITEMS = buildStudyItemsFromPairs(PAIR_SPECS, ITEMS);
+  const PRIMING_TRIALS_RAW = buildPrimingTrials(PAIR_SPECS, ITEMS);
+  const PRIMING_TRIALS = shuffleNoRepeatTarget(PRIMING_TRIALS_RAW);
+
+  console.log("Loaded items:", STUDY_ITEMS.length);
+  console.log("Priming trials:", PRIMING_TRIALS.length);
+  console.log("Shared units:", [...new Set(PRIMING_TRIALS.map(t => t.sharedUnit))]);
+
+  return {
+    ITEMS,
+    STUDY_ITEMS,
+    PRIMING_TRIALS
+  };
+}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function buildStudyItemsFromPairs(pairSpecs, itemsMap) {
+  const usedIds = new Set();
+
+  pairSpecs.forEach(p => {
+    usedIds.add(p.primeId);
+    usedIds.add(p.targetId);
+  });
+
+  const studyItems = [];
+  const missing = [];
+
+  usedIds.forEach(id => {
+    if (!itemsMap[id]) {
+      missing.push(id);
+    } else {
+      studyItems.push(itemsMap[id]);
+    }
+  });
+
+  if (missing.length) {
+    throw new Error("Missing itemId(s) in items.csv: " + missing.join(", "));
+  }
+
+  return studyItems;
+}
+
+function buildPrimingTrials(pairSpecs, itemsMap) {
+  const trials = [];
+  const missing = new Set();
+
+  pairSpecs.forEach((p, idx) => {
+    const prime = itemsMap[p.primeId];
+    const target = itemsMap[p.targetId];
+
+    if (!prime) missing.add(p.primeId);
+    if (!target) missing.add(p.targetId);
+
+    trials.push({
+      trialId: `T${String(idx + 1).padStart(4, "0")}`,
+      sharedUnit: p.sharedUnit,
+
+      primeId: p.primeId,
+      targetId: p.targetId,
+
+      primeWord: prime?.word || "",
+      targetWord: target?.word || "",
+
+      primeImg: prime?.img || "",
+      targetImg: target?.img || "",
+
+      primeAnimacy: prime?.animacy || "",
+      targetAnimacy: target?.animacy || ""
+    });
+  });
+
+  if (missing.size) {
+    throw new Error(
+      "PAIR_SPECS refers to missing itemId(s): " +
+      [...missing].join(", ")
+    );
+  }
+
+  return trials;
 }
 
 function shuffle(arr) {
@@ -303,6 +435,23 @@ function shuffle(arr) {
   }
   return a;
 }
+
+function shuffleNoRepeatTarget(trials, maxTries = 2000) {
+  for (let i = 0; i < maxTries; i++) {
+    const s = shuffle(trials);
+    let ok = true;
+    for (let j = 1; j < s.length; j++) {
+      if (s[j].targetId === s[j - 1].targetId) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) return s;
+  }
+  console.warn("Target repeat constraint failed, using simple shuffle.");
+  return shuffle(trials);
+}
+
 
 async function runStudyPass(passNum, items) {
   const order = shuffle(items);
@@ -458,34 +607,6 @@ function runNextAFCTrial() {
       lockAFCTrial(null, trialStart); // ⬅ 자동 진행 X
     }
   }, 100);
-}
-
-function handleAFCResponse(opt, trialStart) {
-  if (afcTimer) clearInterval(afcTimer);
-
-  const rt = Date.now() - trialStart;
-  const correct = opt ? opt.correct : false;
-  const responseWord = opt ? opt.word : "";
-
-  const it = afcOrder[afcIndex];
-
-  appendRow({
-    event: "afc_trial",
-    ts_iso: new Date().toISOString(),
-    pid: session.pid,
-    sessionId: session.sessionId,
-    primeModeGroup: assignedGroup,
-    phase: "afc",
-    trialIndex_phase: afcIndex + 1,
-    itemId: it.itemId,
-    targetWord: it.word,
-    responseWord,
-    correct,
-    rt_ms: rt
-  });
-
-  afcIndex++;
-  runNextAFCTrial();
 }
 
 function endAFC() {
@@ -703,7 +824,7 @@ async function runPrimingTrial(trial) {
     primeCheckReason = evalRes.reason;
 
     // 🔹 15% 랜덤 업로드
-    if (primeAudioBlob && Math.random() < 0.15) {
+    if (primeAudioBlob && Math.random() < 0.15 && typeof uploadAudioBlob === "function") {
       uploadAudioBlob(primeAudioBlob, {
         pid: session.pid,
         sessionId: session.sessionId,
@@ -860,34 +981,45 @@ btnStart.onclick = async () => {
   btnStart.disabled = true;
   show(loadingEl);
 
-  const pid = generatePid();
-  const participant = {
-    nick: nickEl.value.trim(),
-    birthYM: birthYMEl.value,
-    nativeLang: nativeLangEl.value.trim(),
-    otherLangs: otherLangsEl.value.trim()
-  };
+  try {
+    // ✅ 자극 로드 (여기서 실패하면 메시지 띄우고 끝)
+    const stim = await loadAllStimuli();
+    STUDY_ITEMS = stim.STUDY_ITEMS;
+    PRIMING_TRIALS = stim.PRIMING_TRIALS;
 
-  session = await createSession(pid, {
-    primeModeGroup: assignedGroup,
-    participant
-  });
-
-  await appendRow({
-    event:"participant_info",
-    ts_iso:new Date().toISOString(),
-    pid:session.pid,
-    sessionId:session.sessionId,
-    primeModeGroup:assignedGroup,
-    participant_nick:participant.nick,
-    participant_birthYM:participant.birthYM,
-    participant_nativeLang:participant.nativeLang,
-    participant_otherLangs:participant.otherLangs
-  });
-
-  hide(screenConsent);
-  hide(loadingEl);
-  show(screenReady);
+    const pid = generatePid();
+    const participant = {
+      nick: nickEl.value.trim(),
+      birthYM: birthYMEl.value,
+      nativeLang: nativeLangEl.value.trim(),
+      otherLangs: otherLangsEl.value.trim()
+    };
+  
+    session = await createSession(pid, {
+      primeModeGroup: assignedGroup,
+      participant
+    });
+  
+    await appendRow({
+      event:"participant_info",
+      ts_iso:new Date().toISOString(),
+      pid:session.pid,
+      sessionId:session.sessionId,
+      primeModeGroup:assignedGroup,
+      participant_nick:participant.nick,
+      participant_birthYM:participant.birthYM,
+      participant_nativeLang:participant.nativeLang,
+      participant_otherLangs:participant.otherLangs
+    });
+  
+    hide(screenConsent);
+    hide(loadingEl);
+    show(screenReady);
+  } catch (e) {
+    hide(loadingEl);
+    btnStart.disabled = false;
+    alert("자극 파일 로드/세션 준비 중 오류:\n" + e.message);
+  }
 };
 
 btnContinue.onclick = () => {
@@ -996,6 +1128,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
