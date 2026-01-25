@@ -903,30 +903,37 @@ function detectVoiceOnset(maxMs = 2000, threshold = VOICE_THRESHOLD) {
   });
 }
 
-function getAnimacyResponse(timeoutMs = 1200) {
+function getAnimacyResponseMustClick() {
   return new Promise(resolve => {
-    let answered = false;
-
     const done = (resp) => {
-      if (answered) return;
-      answered = true;
       cleanup();
       resolve(resp);
     };
-
     const cleanup = () => {
       btnAnimate.onclick = null;
       btnInanimate.onclick = null;
     };
-
     btnAnimate.onclick = () => done("animate");
     btnInanimate.onclick = () => done("inanimate");
-
-    setTimeout(() => done(null), timeoutMs);
   });
 }
 
+async function requireVoiceOnsetOrRetry({windowMs=3000, retries=1}) {
+  for (let k = 0; k <= retries; k++) {
+    const onset = await detectVoiceOnset(windowMs); // 너의 안정화된 detectVoiceOnset 버전 사용
+    if (onset !== null) return { onset_ms: onset, attempts: k+1, gaveUp: false };
 
+    // 실패 → 재시도 안내
+    if (k < retries) {
+      primingStatus.textContent = "말해 주세요. (마이크가 감지되지 않았습니다)";
+      await sleep(600);
+      primingStatus.textContent = "말하세요";
+      await sleep(200);
+    }
+  }
+  return { onset_ms: null, attempts: retries+1, gaveUp: true };
+}
+  
 async function runPrimingTrial(trial) {
   const fixEl = document.getElementById("primingFixation");
   const imgEl = document.getElementById("primingImg");
@@ -981,9 +988,9 @@ async function runPrimingTrial(trial) {
     // no-naming: animacy decision
     statusEl.textContent = "생물인지 무생물인지 선택하세요";
     animacyButtonsEl.classList.remove("hidden");
-
-    animacyResp = await getAnimacyResponse(2000);
-
+    const aStart = performance.now();
+    animacyResp = await getAnimacyResponseMustClick();
+    const animacyRT = Math.round(performance.now() - aStart);
     animacyButtonsEl.classList.add("hidden");
   }
 
@@ -994,12 +1001,15 @@ async function runPrimingTrial(trial) {
 
   /* ---------- Target ---------- */
   imgEl.src = trial.targetImg;
-  imgEl.classList.remove("hidden");
-  statusEl.textContent = "말하세요";
 
-  const tStart = Date.now();
-  const targetRec = await recordWindow(3000);  // onset + blob 같이 얻기
-  const targetRT = targetRec.onset_ms;
+  statusEl.textContent = "말하세요";
+  const target_display_ts = new Date().toISOString();
+  
+  const vr = await requireVoiceOnsetOrRetry({ windowMs: 3000, retries: 1 });
+  const targetRT = vr.onset_ms;     // null이면 결국 말 안한 것
+  const targetAttempts = vr.attempts;
+  const targetGaveUp = vr.gaveUp;
+
   
   // ✅ target 업로드: 10% 샘플 + 말한 경우만
   let targetAudioFileId = "";
@@ -1014,33 +1024,57 @@ async function runPrimingTrial(trial) {
     const up = await uploadAudioBlob(targetRec.blob, meta);
     targetAudioFileId = up.fileId || "";
   }
-
+  
+  imgEl.classList.remove("hidden");
+  
   /* ---------- 저장 ---------- */
-  appendRow({
+  trialIndexGlobal++;
+
+  await appendRow({
     event: "priming_trial",
     ts_iso: new Date().toISOString(),
     pid: session.pid,
     sessionId: session.sessionId,
+    folderId: session.folderId,
+    phase: "priming",
     primeModeGroup: assignedGroup,
-
+  
+    trialIndex_global: trialIndexGlobal,
+    trialIndex_phase: i + 1,              // runPrimingExperiment에서 i를 넘겨주거나 trialIndexGlobal만 써도 됨
+  
     sharedUnit: trial.sharedUnit,
+  
     primeItemId: trial.primeId,
     targetItemId: trial.targetId,
+  
     primeWord: trial.primeWord,
     targetWord: trial.targetWord,
-
-    // prime 조작점검
-    prime_voice_rt_ms: primeVoiceRT,
-    prime_spoken: primeSpoken,
-    prime_check_reason: primeCheckReason,
-    animacy_response: animacyResp,
-
-    // target
-    target_voice_rt_ms: targetRT,
-    timeout: targetRT === null
-    target_audio_fileId: targetAudioFileId,
-    target_voice_rt_ms: targetRT,
-    timeout: targetRT === null,
+  
+    primeImg: trial.primeImg,
+    targetImg: trial.targetImg,
+  
+    target_display_ts: target_display_ts,
+  
+    // 표준 이름으로 통일
+    prime_voiceKeyRT_ms: primeVoiceRT ?? "",
+    target_voiceKeyRT_ms: targetRT ?? "",
+  
+    // no-naming 조작
+    animacy_response: animacyResp ?? "",
+    animacy_rt_ms: animacyRT ?? "",
+  
+    // 업로드한 경우만
+    prime_audio_fileId: primeAudioFileId ?? "",
+    target_audio_fileId: targetAudioFileId ?? "",
+  
+    // 품질/타임아웃
+    timeout: (targetRT === null),
+    target_attempts: targetAttempts,
+    target_gaveUp: targetGaveUp,
+  
+    // prime check
+    prime_spoken: primeSpoken ?? "",
+    prime_check_reason: primeCheckReason ?? ""
   });
 
   /* ---------- ITI ---------- */
@@ -1383,6 +1417,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
