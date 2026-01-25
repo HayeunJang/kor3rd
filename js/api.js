@@ -61,7 +61,7 @@ export async function blobToBase64(blob) {
   });
 }
 
-async function uploadAudioBlob(blob, meta) {
+export async function uploadAudioBlob(blob, meta) {
   const base64 = await blobToBase64(blob);
 
   const payload = {
