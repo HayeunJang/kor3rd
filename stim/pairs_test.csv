@@ -1,5 +1,5 @@
-prime_syll,target_syll,sharedUnit,prime_pic,target_pic,primeId,targetId
-CV,CVC,body,PICTURE_105.png,PICTURE_181.png,Deer,Triangle
-CVC,CV,nucleus,PICTURE_68.png,PICTURE_724.png,Candle,Whale
-CV,CV,onset,PICTURE_38.png,PICTURE_369.png,Spider,Pot
-CVC,CVC,rime,PICTURE_588.png,PICTURE_110.png,Bracelet,Desk
+pair_id,prime_syll,target_syll,sharedUnit,same_cond,prime,target,prime_pic,target_pic,primeId,targetId
+170,CV,CV,syllable,y,치마,치즈,PICTURE_199.png,PICTURE_72.png,Skirt,Cheese
+175,CV,CVC,body,y,치마,침대,PICTURE_199.png,PICTURE_268.png,Skirt,Bed
+70,CVC,CVC,onset,y,감자,경찰,PICTURE_249.png,PICTURE_213.png,Potato,Police
+61,CVC,CV,onset,y,경찰,거미,PICTURE_213.png,PICTURE_38.png,Police,Spider
