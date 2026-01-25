@@ -292,26 +292,10 @@ async function runStudy2Passes() {
   btnStartStudy.disabled = true;
   btnStartStudy.textContent = "학습 진행 중…";
 
-  await appendRow({
-    event: "study_start",
-    ts_iso: new Date().toISOString(),
-    pid: session.pid,
-    sessionId: session.sessionId,
-    phase: "study"
-  });
-
   // ---- 여기서부터 실제 학습 ----
   await runStudyPass(1, STUDY_ITEMS);
   await sleep(300);
   await runStudyPass(2, STUDY_ITEMS);
-
-  await appendRow({
-    event: "study_end",
-    ts_iso: new Date().toISOString(),
-    pid: session.pid,
-    sessionId: session.sessionId,
-    phase: "study"
-  });
 
   // ---- 학습 종료 처리 ----
   studyProgressEl.textContent =
@@ -400,6 +384,8 @@ function runNextAFCTrial() {
 
   afcChoicesEl.innerHTML = "";
   const trialStart = Date.now();
+  
+  let answered = false;
 
   options.forEach(opt => {
     const btn = document.createElement("button");
@@ -415,8 +401,6 @@ function runNextAFCTrial() {
 
   let remaining = AFC_TIME_LIMIT;
   afcTimerEl.textContent = `남은 시간: ${remaining} ms`;
-
-  let answered = false;
 
   afcTimer = setInterval(() => {
     remaining -= 100;
@@ -519,6 +503,8 @@ function endAFC() {
 
 
 function lockAFCTrial(opt, trialStart) {
+  const it = afcOrder[afcIndex];
+  
   const rt = opt ? (Date.now() - trialStart) : null;
   const correct = opt ? opt.correct : false;
   const responseWord = opt ? opt.word : "";
@@ -530,12 +516,6 @@ function lockAFCTrial(opt, trialStart) {
   afcTimerEl.textContent = timeout
     ? "시간 초과 — 다음 버튼을 눌러 주세요."
     : "응답이 기록되었습니다.";
-
-  const it = afcOrder[afcIndex];
-  const rt = opt ? (Date.now() - trialStart) : null;
-  const correct = opt ? opt.correct : false;
-  const responseWord = opt ? opt.word : "";
-  const timeout = (opt === null);
   
   // ✅ 메모리 누적 (정확도 계산용)
   afcResponses.push({
@@ -569,7 +549,6 @@ function lockAFCTrial(opt, trialStart) {
   btnNextAFC.disabled = false;
 }
 
-const AFC_THRESHOLD = 0.80;
 let afcPhaseName = "afc1";           // "afc1" 또는 "afc2"
 let afcResponses = [];               // 현재 phase 응답 누적
 let afcWrongItems = [];              // afc1 오답 item 리스트
@@ -740,6 +719,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
