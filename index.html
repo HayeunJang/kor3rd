@@ -1161,6 +1161,7 @@ async function uploadAudioBlob(blob, meta) {
     secret: SECRET,               // 네 config.js에 있는 것
     pid: meta.pid,
     sessionId: meta.sessionId,
+    folderId: session.folderId,
     filename: meta.filename,
     mimeType: blob.type || "audio/webm",
     base64
@@ -1354,6 +1355,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
