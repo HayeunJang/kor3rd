@@ -1145,20 +1145,6 @@ async function pumpUploadQueue() {
 }
 
 
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-
-  const json = await res.json();
-  if (!json.ok) {
-    console.error("Audio upload failed", json);
-  } else {
-    console.log("Audio uploaded:", json.fileId);
-  }
-}
-
 
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
@@ -1338,6 +1324,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
