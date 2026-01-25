@@ -5,8 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Experiment</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 24px; }
-    .card { max-width: 760px; border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    html, body {
+      height: 100%;
+    }
+    
+    body{
+      font-family: system-ui, sans-serif;
+      margin: 0;
+    
+      display: flex;
+      justify-content: center;   /* 가로 중앙 */
+      align-items: flex-start;   /* 세로는 위에서 시작 */
+    
+      padding: 24px;             /* 화면 가장자리 여백 */
+      box-sizing: border-box;
+    
+      background: #fff;
+    }
+    .card{
+      width: min(760px, 100%);
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 0 0 24px 0;   /* 아래쪽 간격만 */
+    }
     .hidden { display: none; }
     /* ===== 4AFC choice layout ===== */
     #afcChoices{
@@ -42,10 +64,11 @@
 </head>
 
 <body>
-<h1>실험 참여</h1>
+
 
 <!-- ================== 1. Consent + Participant Info ================== -->
 <div class="card" id="screen-consent">
+  <h1 style="margin-top:0;">실험 참여</h1>
   <h2>연구 참여 동의</h2>
   <p>
     이 실험에서는 그림을 보고 단어를 말하거나 선택하는 과제를 하게 됩니다.<br>
@@ -1323,6 +1346,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
