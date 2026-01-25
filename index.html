@@ -1156,27 +1156,42 @@ async function blobToBase64(blob) {
 
 async function uploadAudioBlob(blob, meta) {
   const base64 = await blobToBase64(blob);
+
   const payload = {
     action: "uploadAudio",
-    secret: SECRET,               // 네 config.js에 있는 것
+    secret: SECRET,                 // ★ 반드시 필요
     pid: meta.pid,
     sessionId: meta.sessionId,
-    folderId: session.folderId,
-    filename: meta.filename,
+    folderId: session.folderId,     // ★ createSession에서 받은 값
+    filename: `${meta.type}_${meta.trialId}_${Date.now()}.webm`,
     mimeType: blob.type || "audio/webm",
-    base64
+    base64: base64
   };
 
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type":"application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
 
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "uploadAudio failed");
-  return json;
+  if (!json.ok) {
+    console.error("Audio upload failed", json);
+  } else {
+    console.log("Audio uploaded:", json.fileId);
+  }
 }
+
+function blobToBase64(blob) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      resolve(reader.result.split(",")[1]); // data:...;base64, 제거
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
 async function assignPrimeMode() {
@@ -1355,6 +1370,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
