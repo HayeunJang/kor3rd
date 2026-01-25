@@ -156,6 +156,22 @@
   </div>
 </div>
 
+<!-- ================== Mic Calibration ================== -->
+<div class="card hidden" id="screen-mic">
+  <h2>마이크 확인</h2>
+  <p class="note" id="micText"></p>
+
+  <div style="margin-top:12px;">
+    <progress id="micMeter" value="0" max="1" style="width:100%; height:18px;"></progress>
+    <div class="note" id="micLevelText"></div>
+  </div>
+
+  <div style="margin-top:16px; text-align:center;">
+    <button id="btnMicStart">마이크 권한 확인</button>
+    <button id="btnMicNext" class="hidden">본 실험 시작</button>
+  </div>
+</div>
+
 <!-- ================== 3. Priming (본 실험) ================== -->
 <div class="card hidden" id="screen-priming">
   <h2>본 실험</h2>
@@ -262,6 +278,15 @@ const screenAfcResult = document.getElementById("screen-afc-result");
 const afcResultTextEl = document.getElementById("afcResultText");
 const btnAfcRemedial = document.getElementById("btnAfcRemedial");
 const btnAfcProceed = document.getElementById("btnAfcProceed");
+
+let VOICE_THRESHOLD = 0.02; // 기본값, 캘리브레이션으로 재설정
+
+const screenMic = document.getElementById("screen-mic");
+const micTextEl = document.getElementById("micText");
+const micMeterEl = document.getElementById("micMeter");
+const micLevelTextEl = document.getElementById("micLevelText");
+const btnMicStart = document.getElementById("btnMicStart");
+const btnMicNext = document.getElementById("btnMicNext");
 
 const animacyButtonsEl = document.getElementById("animacyButtons");
 const btnAnimate = document.getElementById("btnAnimate");
@@ -386,6 +411,93 @@ function buildStudyItemsFromPairs(pairSpecs, itemsMap) {
   }
 
   return studyItems;
+}
+
+function getCurrentRMS() {
+  const buf = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(buf);
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const v = (buf[i] - 128) / 128;
+    sum += v * v;
+  }
+  return Math.sqrt(sum / buf.length);
+}
+
+async function runMicCalibration() {
+  micTextEl.innerHTML =
+    "1) 먼저 <b>말하지 말고</b> 조용히 있어 주세요.<br>" +
+    "2) 다음 안내가 나오면 <b>‘가’</b>를 한 번 말해 주세요.";
+
+  btnMicStart.classList.remove("hidden");
+  btnMicNext.classList.add("hidden");
+  btnMicStart.disabled = false;
+
+  btnMicStart.onclick = async () => {
+    btnMicStart.disabled = true;
+    btnMicStart.textContent = "마이크 준비 중…";
+
+    try {
+      await initMic(); // 권한 + analyser 준비
+
+      // ---- noise floor ----
+      micTextEl.innerHTML = "지금은 <b>말하지 마세요</b> (1초)…";
+      let noiseSamples = [];
+      const t0 = performance.now();
+      while (performance.now() - t0 < 1200) {
+        const rms = getCurrentRMS();
+        noiseSamples.push(rms);
+        micMeterEl.value = Math.min(1, rms * 10);
+        micLevelTextEl.textContent = `입력 레벨: ${rms.toFixed(4)}`;
+        await sleep(60);
+      }
+      const noise = median(noiseSamples);
+
+      // ---- speak prompt ----
+      micTextEl.innerHTML = "<b>‘가’</b>를 한 번 말해 주세요 (2초)…";
+      let speakSamples = [];
+      const t1 = performance.now();
+      while (performance.now() - t1 < 1800) {
+        const rms = getCurrentRMS();
+        speakSamples.push(rms);
+        micMeterEl.value = Math.min(1, rms * 10);
+        micLevelTextEl.textContent = `입력 레벨: ${rms.toFixed(4)}`;
+        await sleep(30);
+      }
+      const peak = Math.max(...speakSamples);
+
+      // threshold 계산
+      const thrByNoise = Math.max(0.01, noise * 3.0);
+      const thrByPeak = peak * 0.25;
+      VOICE_THRESHOLD = clamp(thrByPeak, thrByNoise, 0.20);
+
+      micTextEl.innerHTML =
+        `마이크 확인이 완료되었습니다.<br>` +
+        `감지 임계치(자동 설정): <b>${VOICE_THRESHOLD.toFixed(3)}</b><br>` +
+        `이제 본 실험을 시작할 수 있습니다.`;
+
+      btnMicStart.classList.add("hidden");
+      btnMicNext.classList.remove("hidden");
+
+    } catch (e) {
+      btnMicStart.disabled = false;
+      btnMicStart.textContent = "마이크 권한 확인";
+      alert("마이크 설정 중 오류:\n" + e.message);
+    }
+  };
+
+  btnMicNext.onclick = async () => {
+    hide(screenMic);
+    await runPrimingExperiment(PRIMING_TRIALS); // priming 시작
+  };
+}
+
+function clamp(x, lo, hi) { return Math.min(hi, Math.max(lo, x)); }
+
+function median(arr) {
+  const a = arr.slice().sort((x,y)=>x-y);
+  const mid = Math.floor(a.length/2);
+  return a.length % 2 ? a[mid] : (a[mid-1]+a[mid])/2;
 }
 
 function buildPrimingTrials(pairSpecs, itemsMap) {
@@ -741,7 +853,7 @@ function setPrimingInstruction() {
 }
 
 
-function detectVoiceOnset(maxMs = 2000, threshold = 0.02) {
+function detectVoiceOnset(maxMs = 2000, threshold = VOICE_THRESHOLD) {
   return new Promise(resolve => {
     const start = performance.now();
     const buf = new Uint8Array(analyser.fftSize);
@@ -824,13 +936,18 @@ async function runPrimingTrial(trial) {
     primeCheckReason = evalRes.reason;
 
     // 🔹 15% 랜덤 업로드
-    if (primeAudioBlob && Math.random() < 0.15 && typeof uploadAudioBlob === "function") {
-      uploadAudioBlob(primeAudioBlob, {
+    if (primeAudioBlob && Math.random() < 0.15) {
+      const key = `${session.pid}_${session.sessionId}_${trial.trialId}_prime`;
+      const meta = {
         pid: session.pid,
         sessionId: session.sessionId,
         type: "prime",
-        trialId: trial.trialId
-      });
+        trialId: trial.trialId,
+        filename: `${session.pid}_${trial.trialId}_prime.webm`
+      };
+    
+      await idbPut(key, primeAudioBlob, meta);   // 로컬 먼저 저장
+      enqueueUpload(key, primeAudioBlob, meta);  // 업로드는 비동기
     }
 
   } else if (assignedGroup === "covert") {
@@ -951,6 +1068,113 @@ function evaluatePrimeAudio(audioBlob, onsetMs) {
   }
 
   return { spoken: true, reason: "ok" };
+}
+
+function openAudioDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("audioDB", 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("blobs")) {
+        db.createObjectStore("blobs", { keyPath: "key" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbPut(key, blob, meta) {
+  const db = await openAudioDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("blobs", "readwrite");
+    tx.objectStore("blobs").put({ key, blob, meta });
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbDelete(key) {
+  const db = await openAudioDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("blobs", "readwrite");
+    tx.objectStore("blobs").delete(key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+const uploadQueue = [];
+let uploading = false;
+
+function enqueueUpload(key, blob, meta) {
+  uploadQueue.push({ key, blob, meta });
+  pumpUploadQueue();
+}
+
+async function pumpUploadQueue() {
+  if (uploading) return;
+  uploading = true;
+
+  while (uploadQueue.length > 0) {
+    const job = uploadQueue.shift();
+    try {
+      await uploadAudioBlob(job.blob, job.meta);
+      await idbDelete(job.key);
+      // 성공 로그(선택)
+      appendRow({
+        event:"audio_upload_ok",
+        ts_iso:new Date().toISOString(),
+        pid: job.meta.pid,
+        sessionId: job.meta.sessionId,
+        audio_key: job.key,
+        audio_type: job.meta.type,
+        trialId: job.meta.trialId
+      });
+    } catch (e) {
+      // 실패하면 다시 큐에 넣고 탈출(잠깐 쉬었다 재시도)
+      uploadQueue.unshift(job);
+      console.warn("upload failed, will retry:", e);
+      await sleep(1500);
+      break;
+    }
+  }
+
+  uploading = false;
+}
+
+async function blobToBase64(blob) {
+  const buf = await blob.arrayBuffer();
+  let binary = "";
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function uploadAudioBlob(blob, meta) {
+  const base64 = await blobToBase64(blob);
+  const payload = {
+    action: "uploadAudio",
+    secret: SECRET,               // 네 config.js에 있는 것
+    pid: meta.pid,
+    sessionId: meta.sessionId,
+    filename: meta.filename,
+    mimeType: blob.type || "audio/webm",
+    base64
+  };
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "uploadAudio failed");
+  return json;
 }
 
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
@@ -1083,10 +1307,12 @@ btnAfcRemedial.onclick = async () => {
   };
 };
 
-btnAfcProceed.onclick = () => {
+btnAfcProceed.onclick = async () => {
   hide(screenAfcResult);
-  runPrimingExperiment(PRIMING_TRIALS);
+  show(screenMic);              // 캘리브레이션 화면
+  await runMicCalibration();    // 캘리브레이션 끝나면 자동으로 priming 시작
 };
+
 
 btnSubmitContact.onclick = async () => {
   const phone = contactValueEl.value.trim();
@@ -1128,6 +1354,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
