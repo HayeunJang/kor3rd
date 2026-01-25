@@ -2,8 +2,6 @@ import { API_URL, SECRET } from "./config.js";
 
 export { API_URL, SECRET }; // 필요하면 재-export
 
-export function jsonp(params) { ... } // 기존 그대로
-
 
 /** JSONP: createSession / ping 같은 짧은 요청용 */
 export function jsonp(params={}) {
