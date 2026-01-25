@@ -53,7 +53,8 @@
     실험은 여러 단계로 구성되어 있습니다.<br>
     각 단계에서 집중해서 화면을 보고 반응해 주시기 바랍니다.<br>
     정답 여부는 실험 중에 알려주지 않습니다.<br><br>
-    반응시간과 음성(녹음)이 수집될 수 있습니다.<br>
+    반응시간과 음성(녹음)이 수집됩니다.<br>
+    음성 녹음을 위해 마이크 세팅을 확인하고 실험을 시작해주세요.<br>
     언제든 중단할 수 있으며, 동의하지 않으면 참여할 수 없습니다.
   </p>
 
@@ -155,7 +156,33 @@
   </div>
 </div>
 
-<!-- ================== 3. 그림-이름대기 ================== -->
+<!-- ================== 3. Priming (본 실험) ================== -->
+<div class="card hidden" id="screen-priming">
+  <h2>본 실험</h2>
+
+  <p class="note" id="primingInstruction"></p>
+
+  <!-- 고정 높이 시각 영역 -->
+  <div style="
+    height:420px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:48px;
+  ">
+    <div id="primingFixation" class="hidden">+</div>
+    <img id="primingImg" class="hidden" style="max-width:420px; max-height:320px;">
+  </div>
+
+  <p class="note" id="primingStatus"></p>
+
+  <div id="animacyButtons" class="hidden" style="margin-top:12px;">
+    <button id="btnAnimate">생물</button>
+    <button id="btnInanimate">무생물</button>
+  </div>
+</div>
+  
+
   
 <!-- ================== 4. Contact (PII separated) ================== -->
 <div class="card hidden" id="screen-contact">
@@ -240,9 +267,29 @@ const afcResultTextEl = document.getElementById("afcResultText");
 const btnAfcRemedial = document.getElementById("btnAfcRemedial");
 const btnAfcProceed = document.getElementById("btnAfcProceed");
 
+const animacyButtonsEl = document.getElementById("animacyButtons");
+const btnAnimate = document.getElementById("btnAnimate");
+const btnInanimate = document.getElementById("btnInanimate");
+    
+let audioCtx = null;
+let analyser = null;
+let micStream = null;
+  
+let primeRecorder = null;
+let primeChunks = [];
+
   /* =========================
    Study 실행 엔진
    ========================= */
+  
+async function initMic() {
+  micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  source.connect(analyser);
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -554,6 +601,237 @@ let afcResponses = [];               // 현재 phase 응답 누적
 let afcWrongItems = [];              // afc1 오답 item 리스트
 let remedialUsed = false;            // 오답 재학습/재시험은 1번만
 
+function setPrimingInstruction() {
+  const el = document.getElementById("primingInstruction");
+
+  if (assignedGroup === "overt") {
+    el.innerHTML =
+      "첫 번째 그림이 나오면 <b>단어를 소리 내어 말하고</b>,<br>" +
+      "이어지는 두 번째 그림도 <b>빠르게 말해 주세요</b>.";
+  } else if (assignedGroup === "covert") {
+    el.innerHTML =
+      "첫 번째 그림은 <b>속으로 단어를 떠올리고</b>,<br>" +
+      "두 번째 그림은 <b>소리 내어 말해 주세요</b>.";
+  } else {
+    el.innerHTML =
+      "첫 번째 그림은 <b>그냥 보고 지나가고</b>,<br>" +
+      "두 번째 그림만 <b>소리 내어 말해 주세요</b>.";
+  }
+}
+
+
+function detectVoiceOnset(maxMs = 2000, threshold = 0.02) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    const buf = new Uint8Array(analyser.fftSize);
+
+    function tick() {
+      analyser.getByteTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / buf.length);
+
+      if (rms > threshold) {
+        resolve(Math.round(performance.now() - start));
+      } else if (performance.now() - start >= maxMs) {
+        resolve(null); // timeout
+      } else {
+        requestAnimationFrame(tick);
+      }
+    }
+    tick();
+  });
+}
+
+function getAnimacyResponse(timeoutMs = 1200) {
+  return new Promise(resolve => {
+    let answered = false;
+
+    const done = (resp) => {
+      if (answered) return;
+      answered = true;
+      cleanup();
+      resolve(resp);
+    };
+
+    const cleanup = () => {
+      btnAnimate.onclick = null;
+      btnInanimate.onclick = null;
+    };
+
+    btnAnimate.onclick = () => done("animate");
+    btnInanimate.onclick = () => done("inanimate");
+
+    setTimeout(() => done(null), timeoutMs);
+  });
+}
+
+
+async function runPrimingTrial(trial) {
+  const fixEl = document.getElementById("primingFixation");
+  const imgEl = document.getElementById("primingImg");
+  const statusEl = document.getElementById("primingStatus");
+
+  let primeVoiceRT = null;
+  let primeAudioBlob = null;
+  let primeSpoken = null;
+  let primeCheckReason = null;
+  let animacyResp = null;
+
+  /* ---------- Fixation ---------- */
+  imgEl.classList.add("hidden");
+  fixEl.classList.remove("hidden");
+  await sleep(300);
+
+  /* ---------- Prime ---------- */
+  fixEl.classList.add("hidden");
+  imgEl.src = trial.primeImg;
+  imgEl.classList.remove("hidden");
+
+  if (assignedGroup === "overt") {
+    statusEl.textContent = "말하세요";
+
+    const res = await recordPrimeWithVoiceKey(1200);
+    primeVoiceRT = res.prime_voice_rt_ms;
+    primeAudioBlob = res.audio_blob;
+
+    const evalRes = evaluatePrimeAudio(primeAudioBlob, primeVoiceRT);
+    primeSpoken = evalRes.spoken;
+    primeCheckReason = evalRes.reason;
+
+    // 🔹 15% 랜덤 업로드
+    if (primeAudioBlob && Math.random() < 0.15) {
+      uploadAudioBlob(primeAudioBlob, {
+        pid: session.pid,
+        sessionId: session.sessionId,
+        type: "prime",
+        trialId: trial.trialId
+      });
+    }
+
+  } else if (assignedGroup === "covert") {
+    statusEl.textContent = "속으로 말하세요";
+    await sleep(1200);
+
+  } else {
+    // no-naming: animacy decision
+    statusEl.textContent = "생물인지 무생물인지 선택하세요";
+    animacyButtonsEl.classList.remove("hidden");
+
+    animacyResp = await getAnimacyResponse(1200);
+
+    animacyButtonsEl.classList.add("hidden");
+  }
+
+  /* ---------- ISI ---------- */
+  imgEl.classList.add("hidden");
+  statusEl.textContent = "";
+  await sleep(150);
+
+  /* ---------- Target ---------- */
+  imgEl.src = trial.targetImg;
+  imgEl.classList.remove("hidden");
+  statusEl.textContent = "말하세요";
+
+  const targetRT = await detectVoiceOnset(2000);
+
+  /* ---------- 저장 ---------- */
+  appendRow({
+    event: "priming_trial",
+    ts_iso: new Date().toISOString(),
+    pid: session.pid,
+    sessionId: session.sessionId,
+    primeModeGroup: assignedGroup,
+
+    sharedUnit: trial.sharedUnit,
+    primeItemId: trial.primeId,
+    targetItemId: trial.targetId,
+    primeWord: trial.primeWord,
+    targetWord: trial.targetWord,
+
+    // prime 조작점검
+    prime_voice_rt_ms: primeVoiceRT,
+    prime_spoken: primeSpoken,
+    prime_check_reason: primeCheckReason,
+    animacy_response: animacyResp,
+
+    // target
+    target_voice_rt_ms: targetRT,
+    timeout: targetRT === null
+  });
+
+  /* ---------- ITI ---------- */
+  imgEl.classList.add("hidden");
+  statusEl.textContent = "";
+  await sleep(400);
+}
+
+  
+async function runPrimingExperiment(trials) {
+  hide(screenAfcResult);
+  show(document.getElementById("screen-priming"));
+
+  setPrimingInstruction();
+
+  await initMic(); // 🔒 마이크 1회 초기화
+
+  for (let i = 0; i < trials.length; i++) {
+    await runPrimingTrial(trials[i]);
+  }
+
+  // 종료 → 연락처 화면
+  hide(document.getElementById("screen-priming"));
+  show(screenContact);
+}
+  
+async function recordPrimeWithVoiceKey(maxMs = 1200, threshold = 0.02) {
+  primeChunks = [];
+
+  const recorder = new MediaRecorder(micStream, {
+    mimeType: "audio/webm;codecs=opus"
+  });
+  primeRecorder = recorder;
+
+  recorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) primeChunks.push(e.data);
+  };
+
+  recorder.start();
+
+  const onset = await detectVoiceOnset(maxMs, threshold);
+
+  recorder.stop();
+
+  const blob = new Blob(primeChunks, { type: "audio/webm" });
+
+  return {
+    prime_voice_rt_ms: onset,        // null이면 발화 없음
+    audio_blob: blob,
+    audio_size: blob.size
+  };
+}
+
+function evaluatePrimeAudio(audioBlob, onsetMs) {
+  if (!audioBlob || onsetMs === null) {
+    return { spoken: false, reason: "no_onset" };
+  }
+
+  // 너무 짧은 발화(헛기침/노이즈)
+  if (audioBlob.size < 1500) {
+    return { spoken: false, reason: "too_short" };
+  }
+
+  // 발화 onset이 prime 끝에 너무 가까움
+  if (onsetMs > 1000) {
+    return { spoken: false, reason: "late_onset" };
+  }
+
+  return { spoken: true, reason: "ok" };
+}
+
 /* ---------- GROUP ASSIGNMENT (silent) ---------- */
 async function assignPrimeMode() {
   try {
@@ -675,8 +953,7 @@ btnAfcRemedial.onclick = async () => {
 
 btnAfcProceed.onclick = () => {
   hide(screenAfcResult);
-  alert("다음 단계(본 실험)로 이동 — 다음에 priming task 화면을 붙이면 됩니다.");
-  // 여기서 show(screenPriming) 같은 걸로 연결할 예정
+  runPrimingExperiment(PRIMING_TRIALS);
 };
 
 btnSubmitContact.onclick = async () => {
@@ -719,6 +996,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
