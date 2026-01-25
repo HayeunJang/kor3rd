@@ -47,3 +47,41 @@ export async function appendRow(row) {
   if (!data.ok) throw new Error(data.error || "appendRow failed");
   return data;
 }
+
+// api.js
+export async function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+export async function uploadAudioBlob(blob, meta) {
+  const base64 = await blobToBase64(blob);
+
+  const payload = {
+    action: "uploadAudio",
+    secret: SECRET,
+    pid: meta.pid,
+    sessionId: meta.sessionId,
+    folderId: meta.folderId,
+    filename: meta.filename,
+    mimeType: blob.type || "audio/webm",
+    base64
+  };
+
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || "uploadAudio failed");
+  return json;
+}
