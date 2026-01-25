@@ -937,18 +937,17 @@ async function runPrimingTrial(trial) {
     primeCheckReason = evalRes.reason;
 
     // 🔹 15% 랜덤 업로드
-    if (primeAudioBlob && Math.random() < 0.15) {
-      const key = `${session.pid}_${session.sessionId}_${trial.trialId}_prime`;
+    if (primeAudioBlob) {
       const meta = {
         pid: session.pid,
         sessionId: session.sessionId,
-        type: "prime",
-        trialId: trial.trialId,
-        filename: `${session.pid}_${trial.trialId}_prime.webm`
+        folderId: session.folderId,
+        filename: `${session.pid}_${trial.trialId}_prime_${Date.now()}.webm`
       };
+      console.log("UPLOAD TRY", meta, primeAudioBlob.size);
     
-      await idbPut(key, primeAudioBlob, meta);   // 로컬 먼저 저장
-      enqueueUpload(key, primeAudioBlob, meta);  // 업로드는 비동기
+      const out = await uploadAudioBlob(primeAudioBlob, meta);
+      console.log("UPLOAD OK", out);
     }
 
   } else if (assignedGroup === "covert") {
@@ -1324,6 +1323,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
