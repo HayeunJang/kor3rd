@@ -134,10 +134,10 @@
 
   <!-- ================== 2. Study ================== -->
 <div class="card hidden" id="screen-study">
-  <h2>학습(Study)</h2>
+  <h2>학습</h2>
   <p class="note study-instruction" id="studyProgress">
-    이 학습 단계에서는 그림과 함께 해당하는 단어를 미리 보여드립니다.<br>
-    이후 단계에서는 글자가 없이 그림만 제시되기 때문에,<br>
+    이 단계에서는 그림과 함께 해당하는 단어를 미리 보여드립니다.<br>
+    이후 실험 단계에서는 글자가 없이 그림만 제시되기 때문에,<br>
     그림과 단어의 연결을 잘 익혀 주세요.  <br><br>
     각 그림은 잠깐씩 자동으로 제시됩니다.<br>
     화면에 나오는 그림과 단어를 그대로 보고 기억해 주세요.<br>
@@ -610,7 +610,7 @@ async function runStudyPass(passNum, items) {
   const order = shuffle(items);
   for (let t = 0; t < order.length; t++) {
     const it = order[t];
-    studyProgressEl.textContent = `학습 ${passNum}/1 — ${t+1}/${order.length}`;
+    studyProgressEl.textContent = `${passNum}/1 — ${t+1}/${order.length}`;
 
     fixationEl.classList.remove("hidden");
     studyImgEl.classList.add("hidden");
@@ -979,7 +979,7 @@ async function runPrimingTrial(trial, i) {
     statusEl.textContent = "말하세요";  // ✅ 이미 있음
     statusEl.style.fontSize = "20px";
 
-    const res = await recordPrimeWithVoiceKey(2000);  // ✅ 이미 2초
+    const res = await recordPrimeWithVoiceKey(2500);  // ✅ 이미 2초
     primeVoiceRT = res.prime_voice_rt_ms;
     primeAudioBlob = res.audio_blob;
 
@@ -1038,7 +1038,7 @@ async function runPrimingTrial(trial, i) {
   } else if (assignedGroup === "covert") {
     statusEl.textContent = "속으로 말하세요";
     statusEl.style.fontSize = "20px";
-    await sleep(2000);
+    await sleep(2500);
 
   } else {
     // no-naming: animacy decision
@@ -1049,7 +1049,7 @@ async function runPrimingTrial(trial, i) {
     animacyButtonsEl.classList.remove("hidden");
     const aStart = performance.now();
     animacyResp = await getAnimacyResponseMustClick();
-    const animacyRT = Math.round(performance.now() - aStart);
+    animacyRT = Math.round(performance.now() - aStart);
     animacyButtonsEl.classList.add("hidden");
   }
 
@@ -1062,7 +1062,7 @@ async function runPrimingTrial(trial, i) {
   
   // ✅ ISI에 fixation 표시
   fixEl.classList.remove("hidden");
-  await sleep(150);
+  await sleep(100);
   fixEl.classList.add("hidden");
 
   /* ---------- Target ---------- */
@@ -1571,5 +1571,6 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
