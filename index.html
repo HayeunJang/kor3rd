@@ -410,7 +410,7 @@ async function loadAllStimuli() {
 
   const STUDY_ITEMS = buildStudyItemsFromPairs(PAIR_SPECS, ITEMS);
   const PRIMING_TRIALS_RAW = buildPrimingTrials(PAIR_SPECS, ITEMS);
-  const PRIMING_TRIALS = shuffleNoRepeatTarget(PRIMING_TRIALS_RAW);
+  const PRIMING_TRIALS = shuffleNoBadAdjacency(PRIMING_TRIALS_RAW);
 
   console.log("Loaded items:", STUDY_ITEMS.length);
   console.log("Priming trials:", PRIMING_TRIALS.length);
@@ -588,21 +588,32 @@ function shuffle(arr) {
   return a;
 }
 
-function shuffleNoRepeatTarget(trials, maxTries = 2000) {
+function shuffleNoBadAdjacency(trials, maxTries = 5000) {
   for (let i = 0; i < maxTries; i++) {
     const s = shuffle(trials);
     let ok = true;
+
     for (let j = 1; j < s.length; j++) {
-      if (s[j].targetId === s[j - 1].targetId) {
-        ok = false;
-        break;
-      }
+      const prev = s[j - 1];
+      const curr = s[j];
+
+      // 1) target-target 금지
+      if (curr.targetId === prev.targetId) { ok = false; break; }
+
+      // 2) prime-prime 금지
+      if (curr.primeId === prev.primeId) { ok = false; break; }
+
+      // 3) (prev target) - (curr prime) 동일 금지
+      if (curr.primeId === prev.targetId) { ok = false; break; }
     }
+
     if (ok) return s;
   }
-  console.warn("Target repeat constraint failed, using simple shuffle.");
+
+  console.warn("Adjacency constraints failed; using best-effort shuffle (constraints not guaranteed).");
   return shuffle(trials);
 }
+
 
 
 async function runStudyPass(passNum, items) {
@@ -1568,6 +1579,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
