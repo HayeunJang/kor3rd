@@ -1043,9 +1043,7 @@ async function runPrimingTrial(trial, i) {
   } else {
     // no-naming: animacy decision
     statusEl.textContent = "생물 / 무생물?";
-    statusEl.style.fontSize = "28px";
-    statusEl.style.fontWeight = "bold";
-    statusEl.style.color = "#444444";
+    statusEl.style.fontSize = "20px";
     animacyButtonsEl.classList.remove("hidden");
     const aStart = performance.now();
     animacyResp = await getAnimacyResponseMustClick();
@@ -1571,6 +1569,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
