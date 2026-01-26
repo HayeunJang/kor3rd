@@ -1004,9 +1004,11 @@ async function runPrimingTrial(trial) {
 
   statusEl.textContent = "말하세요";
   const target_display_ts = new Date().toISOString();
-  
+
+  // ✅ targetRec을 반드시 선언
+  const targetRec = await recordWindow(3000);   // recordWindow가 { onset_ms, blob } 리턴한다고 가정
+  const targetRT = targetRec.onset_ms;          // null이면 timeout
   const vr = await requireVoiceOnsetOrRetry({ windowMs: 3000, retries: 1 });
-  const targetRT = vr.onset_ms;     // null이면 결국 말 안한 것
   const targetAttempts = vr.attempts;
   const targetGaveUp = vr.gaveUp;
 
@@ -1417,6 +1419,7 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
 
 
