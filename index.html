@@ -970,29 +970,44 @@ async function runPrimingTrial(trial, i) {
     primeCheckReason = evalRes.reason;
 
     // 🔹 Prime 오디오 업로드 (모든 trial)
-    if (primeAudioBlob && primeAudioBlob.size > 100) {
-      const meta = {
-        pid: session.pid,
-        sessionId: session.sessionId,
-        folderId: session.folderId,
-        filename: `${session.pid}_${trial.trialId}_prime_${Date.now()}.webm`,
-        mimeType: "audio/webm",
-        type: "prime",
-        trialId: trial.trialId,
-        phase: "priming"
-      };
-      console.log("🎤 PRIME UPLOAD TRY:", meta);
-      console.log("   Blob size:", primeAudioBlob.size, "bytes");
+    console.log("📊 Prime audio check:", {
+      hasBlob: !!primeAudioBlob,
+      blobSize: primeAudioBlob?.size,
+      hasSession: !!session,
+      sessionData: session ? {pid: session.pid, sessionId: session.sessionId, folderId: session.folderId} : null
+    });
     
-      try {
-        const out = await uploadAudioBlob(primeAudioBlob, meta);
-        console.log("✅ PRIME UPLOAD OK:", out);
-        primeAudioFileId = out.fileId || "";
-      } catch (e) {
-        console.error("❌ Prime audio upload failed:", e);
+    if (primeAudioBlob && primeAudioBlob.size > 100) {
+      if (!session || !session.folderId) {
+        console.error("❌ Cannot upload - session not initialized!", session);
+      } else {
+        const meta = {
+          pid: session.pid,
+          sessionId: session.sessionId,
+          folderId: session.folderId,
+          filename: `${session.pid}_${trial.trialId}_prime_${Date.now()}.webm`,
+          mimeType: "audio/webm",
+          type: "prime",
+          trialId: trial.trialId,
+          phase: "priming"
+        };
+        console.log("🎤 PRIME UPLOAD TRY:", meta);
+        console.log("   Blob size:", primeAudioBlob.size, "bytes");
+      
+        try {
+          const out = await uploadAudioBlob(primeAudioBlob, meta);
+          console.log("✅ PRIME UPLOAD OK:", out);
+          primeAudioFileId = out.fileId || "";
+        } catch (e) {
+          console.error("❌ Prime audio upload failed:", e);
+          console.error("   Error details:", e.message);
+          console.error("   Stack:", e.stack);
+        }
       }
     } else {
-      console.log("⚠️ Prime audio not uploaded - blob:", primeAudioBlob, "size:", primeAudioBlob?.size);
+      console.log("⚠️ Prime audio not uploaded - condition not met");
+      console.log("   Has blob:", !!primeAudioBlob);
+      console.log("   Blob size:", primeAudioBlob?.size);
     }
 
   } else if (assignedGroup === "covert") {
@@ -1050,34 +1065,47 @@ async function runPrimingTrial(trial, i) {
     }
   }
   
-  // ✅ target 업로드: 모든 trial (10% → 100%)
+  // ✅ target 업로드: 모든 trial
   let targetAudioFileId = "";
   
+  console.log("📊 Target audio check:", {
+    hasBlob: !!targetRec.blob,
+    blobSize: targetRec.blob?.size,
+    onsetMs: targetRec.onset_ms,
+    hasSession: !!session,
+    sessionData: session ? {pid: session.pid, sessionId: session.sessionId, folderId: session.folderId} : null
+  });
+  
   if (targetRec.blob && targetRec.blob.size > 100 && targetRec.onset_ms !== null) {
-    const meta = {
-      pid: session.pid,
-      sessionId: session.sessionId,
-      folderId: session.folderId,
-      filename: `${session.pid}_${trial.trialId}_target_${Date.now()}.webm`,
-      mimeType: "audio/webm",
-      type: "target",
-      trialId: trial.trialId,
-      phase: "priming"
-    };
-    console.log("🎤 TARGET UPLOAD TRY:", meta);
-    console.log("   Blob size:", targetRec.blob.size, "bytes");
-    console.log("   Onset:", targetRec.onset_ms, "ms");
-    
-    try {
-      const out = await uploadAudioBlob(targetRec.blob, meta);
-      console.log("✅ TARGET UPLOAD OK:", out);
-      targetAudioFileId = out.fileId || "";
-    } catch (e) {
-      console.error("❌ Target audio upload failed:", e);
-      console.error("   Error details:", e.message, e.stack);
+    if (!session || !session.folderId) {
+      console.error("❌ Cannot upload - session not initialized!", session);
+    } else {
+      const meta = {
+        pid: session.pid,
+        sessionId: session.sessionId,
+        folderId: session.folderId,
+        filename: `${session.pid}_${trial.trialId}_target_${Date.now()}.webm`,
+        mimeType: "audio/webm",
+        type: "target",
+        trialId: trial.trialId,
+        phase: "priming"
+      };
+      console.log("🎤 TARGET UPLOAD TRY:", meta);
+      console.log("   Blob size:", targetRec.blob.size, "bytes");
+      console.log("   Onset:", targetRec.onset_ms, "ms");
+      
+      try {
+        const out = await uploadAudioBlob(targetRec.blob, meta);
+        console.log("✅ TARGET UPLOAD OK:", out);
+        targetAudioFileId = out.fileId || "";
+      } catch (e) {
+        console.error("❌ Target audio upload failed:", e);
+        console.error("   Error details:", e.message);
+        console.error("   Stack:", e.stack);
+      }
     }
   } else {
-    console.log("⚠️ Target audio not uploaded");
+    console.log("⚠️ Target audio not uploaded - condition not met");
     console.log("   Has blob:", !!targetRec.blob);
     console.log("   Blob size:", targetRec.blob?.size);
     console.log("   Onset:", targetRec.onset_ms);
@@ -1117,6 +1145,10 @@ async function runPrimingTrial(trial, i) {
     // 표준 이름으로 통일
     prime_voiceKeyRT_ms: primeVoiceRT ?? "",
     target_voiceKeyRT_ms: targetRec.onset_ms ?? "",
+    
+    // Recording start lag (현재 미구현)
+    prime_recStartLag_ms: "",
+    target_recStartLag_ms: "",
   
     // no-naming 조작
     animacy_response: animacyResp ?? "",
@@ -1133,7 +1165,15 @@ async function runPrimingTrial(trial, i) {
   
     // prime check
     prime_spoken: primeSpoken ?? "",
-    prime_check_reason: primeCheckReason ?? ""
+    prime_check_reason: primeCheckReason ?? "",
+    
+    // 추가 필드 (향후 사용 또는 빈 값)
+    accuracy: "",
+    notes: "",
+    phone: "",
+    study_pass: "",
+    picOn_ms: "",
+    labelOn_ms: ""
   });
 
   /* ---------- ITI ---------- */
@@ -1193,16 +1233,22 @@ async function recordPrimeWithVoiceKey(maxMs = 1200, threshold = 0.02) {
   primeRecorder = recorder;
 
   recorder.ondataavailable = e => {
-    if (e.data && e.data.size > 0) primeChunks.push(e.data);
+    if (e.data && e.data.size > 0) {
+      console.log("🎙️ Prime chunk received:", e.data.size, "bytes");
+      primeChunks.push(e.data);
+    }
   };
 
-  recorder.start();
+  recorder.start(250);  // ✅ timeslice 추가
 
   const onset = await detectVoiceOnset(maxMs, threshold);
+  console.log("🎙️ Prime voice onset:", onset, "ms");
 
   recorder.stop();
+  await new Promise(r => recorder.onstop = r);  // ✅ stop 완료 대기
 
   const blob = new Blob(primeChunks, { type: "audio/webm" });
+  console.log("🎙️ Prime blob created:", blob.size, "bytes from", primeChunks.length, "chunks");
 
   return {
     prime_voice_rt_ms: onset,        // null이면 발화 없음
@@ -1482,3 +1528,26 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
