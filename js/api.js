@@ -61,7 +61,14 @@ export async function blobToBase64(blob) {
 }
 
 export async function uploadAudioBlob(blob, meta) {
+  console.log("📤 uploadAudioBlob called:", {
+    blobSize: blob?.size,
+    blobType: blob?.type,
+    meta: meta
+  });
+
   const base64 = await blobToBase64(blob);
+  console.log("📤 Base64 encoded, length:", base64.length);
 
   const payload = {
     action: "uploadAudio",
@@ -71,8 +78,14 @@ export async function uploadAudioBlob(blob, meta) {
     folderId: meta.folderId,
     filename: meta.filename,
     mimeType: blob.type || "audio/webm",
-    base64
+    base64,
+    // ✅ 추가 메타데이터
+    type: meta.type,           // "prime" or "target"
+    trialId: meta.trialId,     // trial ID
+    phase: meta.phase          // "priming"
   };
+
+  console.log("📤 Sending POST to API_URL with payload keys:", Object.keys(payload));
 
   const res = await fetch(API_URL, {
     method: "POST",
@@ -80,7 +93,22 @@ export async function uploadAudioBlob(blob, meta) {
     body: JSON.stringify(payload)
   });
 
+  console.log("📥 Response status:", res.status);
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("❌ Response not OK:", text);
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "uploadAudio failed");
+  console.log("📥 Response JSON:", json);
+
+  if (!json.ok) {
+    console.error("❌ Upload failed:", json.error);
+    throw new Error(json.error || "uploadAudio failed");
+  }
+
+  console.log("✅ Upload successful:", json);
   return json;
 }
