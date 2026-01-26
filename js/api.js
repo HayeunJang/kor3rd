@@ -87,9 +87,10 @@ export async function uploadAudioBlob(blob, meta) {
 
   console.log("📤 Sending POST to API_URL with payload keys:", Object.keys(payload));
 
+  // ✅ CORS 문제 해결: Content-Type을 text/plain으로 변경
   const res = await fetch(API_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },  // ← 수정
     body: JSON.stringify(payload)
   });
 
