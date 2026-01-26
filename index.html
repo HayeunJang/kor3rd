@@ -30,6 +30,7 @@
       margin: 0 0 24px 0;   /* 아래쪽 간격만 */
     }
     .hidden { display: none; }
+    
     /* ===== 4AFC choice layout ===== */
     #afcChoices{
       display:grid;
@@ -43,6 +44,13 @@
       padding: 12px;
       font-size: 16px;
     }
+    
+    /* ===== Priming status message (center horizontally) ===== */
+    #primingStatus {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
     label { display:block; margin: 10px 0 6px; }
     input, select { width: 100%; padding: 8px; font-size: 16px; }
     button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
@@ -74,10 +82,9 @@
     이 실험에서는 그림을 보고 단어를 말하거나 선택하는 과제를 하게 됩니다.<br>
     각 단계마다 화면에 안내가 제시됩니다. 안내에 따라 진행해 주세요.<br><br>
     실험은 여러 단계로 구성되어 있습니다.<br>
-    각 단계에서 집중해서 화면을 보고 반응해 주시기 바랍니다.<br>
-    정답 여부는 실험 중에 알려주지 않습니다.<br><br>
+    각 단계에서 집중해서 화면을 보고 반응해 주시기 바랍니다.<br><br>
     반응시간과 음성(녹음)이 수집됩니다.<br>
-    음성 녹음을 위해 마이크 세팅을 확인하고 실험을 시작해주세요.<br>
+    음성 녹음을 위해 마이크 세팅을 확인하고 실험을 시작해주세요.<br><br>
     언제든 중단할 수 있으며, 동의하지 않으면 참여할 수 없습니다.
   </p>
 
@@ -95,6 +102,14 @@
 
   <label>생년월</label>
   <input id="birthYM" type="month">
+
+  <label>성별</label>
+  <select id="gender">
+    <option value="">선택하세요</option>
+    <option value="male">남</option>
+    <option value="female">여</option>
+    <option value="prefer-not-to-say">답하지 않음</option>
+  </select>
 
   <label>모국어</label>
   <input id="nativeLang" placeholder="예: 한국어">
@@ -257,6 +272,7 @@ const screenContact = document.getElementById("screen-contact");
 const consentCheck = document.getElementById("consentCheck");
 const nickEl = document.getElementById("nick");
 const birthYMEl = document.getElementById("birthYM");
+const genderEl = document.getElementById("gender");
 const nativeLangEl = document.getElementById("nativeLang");
 const otherLangsEl = document.getElementById("otherLangs");
 const btnStart = document.getElementById("btnStart");
@@ -295,7 +311,7 @@ const afcProgressEl = document.getElementById("afcProgress");
 const afcTimerEl = document.getElementById("afcTimer");
 const btnNextAFC = document.getElementById("btnNextAFC");
 
-const AFC_THRESHOLD = 0.80; // 80%
+const AFC_THRESHOLD = 0.90; // 90%
 
 const screenAfcResult = document.getElementById("screen-afc-result");
 const afcResultTextEl = document.getElementById("afcResultText");
@@ -668,6 +684,7 @@ function validateForm() {
     consentCheck.checked &&
     nickEl.value.trim().length >= 2 &&
     /^\d{4}-\d{2}$/.test(birthYMEl.value) &&
+    genderEl.value &&
     nativeLangEl.value.trim() &&
     otherLangsEl.value.trim()
   );
@@ -959,9 +976,12 @@ async function runPrimingTrial(trial, i) {
   imgEl.classList.remove("hidden");
 
   if (assignedGroup === "overt") {
-    statusEl.textContent = "말하세요";
+    statusEl.textContent = "말하세요";  // ✅ 이미 있음
+    statusEl.style.fontSize = "32px";
+    statusEl.style.fontWeight = "bold";
+    statusEl.style.color = "#ff4444";
 
-    const res = await recordPrimeWithVoiceKey(2000);
+    const res = await recordPrimeWithVoiceKey(2000);  // ✅ 이미 2초
     primeVoiceRT = res.prime_voice_rt_ms;
     primeAudioBlob = res.audio_blob;
 
@@ -969,7 +989,7 @@ async function runPrimingTrial(trial, i) {
     primeSpoken = evalRes.spoken;
     primeCheckReason = evalRes.reason;
 
-    // 🔹 Prime 오디오 업로드 (백그라운드 비동기)
+    // 🔹 Prime 오디오 업로드 (백그라운드 비동기, 20% 샘플링)
     console.log("📊 Prime audio check:", {
       hasBlob: !!primeAudioBlob,
       blobSize: primeAudioBlob?.size,
@@ -977,7 +997,8 @@ async function runPrimingTrial(trial, i) {
       sessionData: session ? {pid: session.pid, sessionId: session.sessionId, folderId: session.folderId} : null
     });
     
-    if (primeAudioBlob && primeAudioBlob.size > 100) {
+    // 🔹 Prime 오디오 업로드 (백그라운드 비동기, 20% 샘플링)
+    if (primeAudioBlob && primeAudioBlob.size > 100 && Math.random() < 0.20) {
       if (!session || !session.folderId) {
         console.error("❌ Cannot upload - session not initialized!", session);
       } else {
@@ -991,7 +1012,7 @@ async function runPrimingTrial(trial, i) {
           trialId: trial.trialId,
           phase: "priming"
         };
-        console.log("🎤 PRIME UPLOAD START (background):", meta);
+        console.log("🎤 PRIME UPLOAD START (background, sampled):", meta);
         console.log("   Blob size:", primeAudioBlob.size, "bytes");
       
         // ✅ await 제거 - 백그라운드에서 업로드
@@ -1004,21 +1025,24 @@ async function runPrimingTrial(trial, i) {
             console.error("❌ Prime audio upload failed:", e);
             console.error("   Error details:", e.message);
           });
-
       }
     } else {
-      console.log("⚠️ Prime audio not uploaded - condition not met");
-      console.log("   Has blob:", !!primeAudioBlob);
-      console.log("   Blob size:", primeAudioBlob?.size);
+      console.log("⚠️ Prime audio not uploaded (size check or sampling)");
     }
 
   } else if (assignedGroup === "covert") {
     statusEl.textContent = "속으로 말하세요";
+    statusEl.style.fontSize = "32px";
+    statusEl.style.fontWeight = "bold";
+    statusEl.style.color = "#4444ff";
     await sleep(2000);
 
   } else {
     // no-naming: animacy decision
-    statusEl.textContent = "생물인지 무생물인지 선택하세요";
+    statusEl.textContent = "생물 / 무생물?";
+    statusEl.style.fontSize = "28px";
+    statusEl.style.fontWeight = "bold";
+    statusEl.style.color = "#444444";
     animacyButtonsEl.classList.remove("hidden");
     const aStart = performance.now();
     animacyResp = await getAnimacyResponseMustClick();
@@ -1029,6 +1053,9 @@ async function runPrimingTrial(trial, i) {
   /* ---------- ISI ---------- */
   imgEl.classList.add("hidden");
   statusEl.textContent = "";
+  statusEl.style.fontSize = "";  // ✅ 스타일 초기화
+  statusEl.style.fontWeight = "";
+  statusEl.style.color = "";
   
   // ✅ ISI에 fixation 표시
   fixEl.classList.remove("hidden");
@@ -1040,6 +1067,9 @@ async function runPrimingTrial(trial, i) {
   imgEl.classList.remove("hidden");  // ✅ 이미지 표시
 
   statusEl.textContent = "말하세요";
+  statusEl.style.fontSize = "32px";
+  statusEl.style.fontWeight = "bold";
+  statusEl.style.color = "#ff4444";
   const target_display_ts = new Date().toISOString();
 
   // ✅ 음성 감지 + 녹음을 한 번에
@@ -1052,9 +1082,13 @@ async function runPrimingTrial(trial, i) {
   
   if (targetRT === null) {
     // 재시도 로직 (필요시)
-    statusEl.textContent = "말해 주세요 (다시 시도)";
+    statusEl.textContent = "말해 주세요!";
+    statusEl.style.fontSize = "36px";
+    statusEl.style.color = "#ff0000";
     await sleep(600);
     statusEl.textContent = "말하세요";
+    statusEl.style.fontSize = "32px";
+    statusEl.style.color = "#ff4444";
     
     const retryRec = await recordWindow(3000);
     if (retryRec.onset_ms !== null) {
@@ -1182,6 +1216,9 @@ async function runPrimingTrial(trial, i) {
   /* ---------- ITI ---------- */
   imgEl.classList.add("hidden");
   statusEl.textContent = "";
+  statusEl.style.fontSize = "";
+  statusEl.style.fontWeight = "";
+  statusEl.style.color = "";
   await sleep(400);
 }
 
@@ -1372,7 +1409,7 @@ async function assignPrimeMode() {
 assignPrimeMode().then(g=>assignedGroup=g);
 
 /* ---------- EVENTS ---------- */
-[consentCheck,nickEl,birthYMEl,nativeLangEl,otherLangsEl]
+[consentCheck,nickEl,birthYMEl,genderEl,nativeLangEl,otherLangsEl]
   .forEach(el=>{
     el.addEventListener("input",validateForm);
     el.addEventListener("change",validateForm);
@@ -1392,6 +1429,7 @@ btnStart.onclick = async () => {
     const participant = {
       nick: nickEl.value.trim(),
       birthYM: birthYMEl.value,
+      gender: genderEl.value,
       nativeLang: nativeLangEl.value.trim(),
       otherLangs: otherLangsEl.value.trim()
     };
@@ -1409,6 +1447,7 @@ btnStart.onclick = async () => {
       primeModeGroup:assignedGroup,
       participant_nick:participant.nick,
       participant_birthYM:participant.birthYM,
+      participant_gender:participant.gender,
       participant_nativeLang:participant.nativeLang,
       participant_otherLangs:participant.otherLangs
     });
