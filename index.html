@@ -323,6 +323,8 @@ let micStream = null;
 let primeRecorder = null;
 let primeChunks = [];
 
+let trialIndexGlobal = 0; // ✅ 추가
+
   /* =========================
    Study 실행 엔진
    ========================= */
@@ -934,7 +936,7 @@ async function requireVoiceOnsetOrRetry({windowMs=3000, retries=1}) {
   return { onset_ms: null, attempts: retries+1, gaveUp: true };
 }
   
-async function runPrimingTrial(trial) {
+async function runPrimingTrial(trial, i) {
   const fixEl = document.getElementById("primingFixation");
   const imgEl = document.getElementById("primingImg");
   const statusEl = document.getElementById("primingStatus");
@@ -1012,22 +1014,40 @@ async function runPrimingTrial(trial) {
 
   /* ---------- Target ---------- */
   imgEl.src = trial.targetImg;
+  imgEl.classList.remove("hidden");  // ✅ 이미지 표시
 
   statusEl.textContent = "말하세요";
   const target_display_ts = new Date().toISOString();
 
-  // ✅ targetRec을 반드시 선언
-  const targetRec = await recordWindow(3000);   // recordWindow가 { onset_ms, blob } 리턴한다고 가정
-  const targetRT = targetRec.onset_ms;          // null이면 timeout
-  const vr = await requireVoiceOnsetOrRetry({ windowMs: 3000, retries: 1 });
-  const targetAttempts = vr.attempts;
-  const targetGaveUp = vr.gaveUp;
+  // ✅ 음성 감지 + 녹음을 한 번에
+  const targetRec = await recordWindow(3000);
+  const targetRT = targetRec.onset_ms;
 
+  // ✅ 음성 감지 실패 시 재시도 (선택적)
+  let targetAttempts = 1;
+  let targetGaveUp = false;
+  
+  if (targetRT === null) {
+    // 재시도 로직 (필요시)
+    statusEl.textContent = "말해 주세요 (다시 시도)";
+    await sleep(600);
+    statusEl.textContent = "말하세요";
+    
+    const retryRec = await recordWindow(3000);
+    if (retryRec.onset_ms !== null) {
+      targetRec.onset_ms = retryRec.onset_ms;
+      targetRec.blob = retryRec.blob;
+      targetAttempts = 2;
+    } else {
+      targetAttempts = 2;
+      targetGaveUp = true;
+    }
+  }
   
   // ✅ target 업로드: 10% 샘플 + 말한 경우만
   let targetAudioFileId = "";
   
-  if (targetRec.blob && targetRec.blob.size > 1500 && targetRT !== null && Math.random() < 0.10) {
+  if (targetRec.blob && targetRec.blob.size > 1500 && targetRec.onset_ms !== null && Math.random() < 0.10) {
     const meta = {
       pid: session.pid,
       sessionId: session.sessionId,
@@ -1079,7 +1099,7 @@ async function runPrimingTrial(trial) {
   
     // 표준 이름으로 통일
     prime_voiceKeyRT_ms: primeVoiceRT ?? "",
-    target_voiceKeyRT_ms: targetRT ?? "",
+    target_voiceKeyRT_ms: targetRec.onset_ms ?? "",
   
     // no-naming 조작
     animacy_response: animacyResp ?? "",
@@ -1090,7 +1110,7 @@ async function runPrimingTrial(trial) {
     target_audio_fileId: targetAudioFileId ?? "",
   
     // 품질/타임아웃
-    timeout: (targetRT === null),
+    timeout: (targetRec.onset_ms === null),
     target_attempts: targetAttempts,
     target_gaveUp: targetGaveUp,
   
@@ -1133,7 +1153,7 @@ async function runPrimingExperiment(trials) {
   await initMic(); // 🔒 마이크 1회 초기화
 
   for (let i = 0; i < trials.length; i++) {
-    await runPrimingTrial(trials[i]);
+    await runPrimingTrial(trials[i], i);
   }
 
   // 종료 → 연락처 화면
@@ -1439,3 +1459,4 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
