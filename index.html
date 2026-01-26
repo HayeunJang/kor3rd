@@ -941,9 +941,11 @@ async function runPrimingTrial(trial) {
 
   let primeVoiceRT = null;
   let primeAudioBlob = null;
+  let primeAudioFileId = "";
   let primeSpoken = null;
   let primeCheckReason = null;
   let animacyResp = null;
+  let animacyRT = null;
 
   /* ---------- Fixation ---------- */
   imgEl.classList.add("hidden");
@@ -972,12 +974,21 @@ async function runPrimingTrial(trial) {
         pid: session.pid,
         sessionId: session.sessionId,
         folderId: session.folderId,
-        filename: `${session.pid}_${trial.trialId}_prime_${Date.now()}.webm`
+        filename: `${session.pid}_${trial.trialId}_prime_${Date.now()}.webm`,
+        mimeType: "audio/webm",
+        type: "prime",
+        trialId: trial.trialId,
+        phase: "priming"
       };
       console.log("UPLOAD TRY", meta, primeAudioBlob.size);
     
-      const out = await uploadAudioBlob(primeAudioBlob, meta);
-      console.log("UPLOAD OK", out);
+      try {
+        const out = await uploadAudioBlob(primeAudioBlob, meta);
+        console.log("UPLOAD OK", out);
+        primeAudioFileId = out.fileId || "";
+      } catch (e) {
+        console.error("Prime audio upload failed:", e);
+      }
     }
 
   } else if (assignedGroup === "covert") {
@@ -1021,10 +1032,18 @@ async function runPrimingTrial(trial) {
       pid: session.pid,
       sessionId: session.sessionId,
       folderId: session.folderId,
-      filename: `${session.pid}_${trial.trialId}_target_${Date.now()}.webm`
+      filename: `${session.pid}_${trial.trialId}_target_${Date.now()}.webm`,
+      mimeType: "audio/webm",
+      type: "target",
+      trialId: trial.trialId,
+      phase: "priming"
     };
-    const up = await uploadAudioBlob(targetRec.blob, meta);
-    targetAudioFileId = up.fileId || "";
+    try {
+      const up = await uploadAudioBlob(targetRec.blob, meta);
+      targetAudioFileId = up.fileId || "";
+    } catch (e) {
+      console.error("Target audio upload failed:", e);
+    }
   }
   
   imgEl.classList.remove("hidden");
@@ -1044,6 +1063,7 @@ async function runPrimingTrial(trial) {
     trialIndex_global: trialIndexGlobal,
     trialIndex_phase: i + 1,              // runPrimingExperiment에서 i를 넘겨주거나 trialIndexGlobal만 써도 됨
   
+    trialId: trial.trialId,
     sharedUnit: trial.sharedUnit,
   
     primeItemId: trial.primeId,
@@ -1419,26 +1439,3 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
