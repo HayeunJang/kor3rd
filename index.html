@@ -969,7 +969,7 @@ async function runPrimingTrial(trial, i) {
     primeSpoken = evalRes.spoken;
     primeCheckReason = evalRes.reason;
 
-    // 🔹 Prime 오디오 업로드 (모든 trial)
+    // 🔹 Prime 오디오 업로드 (백그라운드 비동기)
     console.log("📊 Prime audio check:", {
       hasBlob: !!primeAudioBlob,
       blobSize: primeAudioBlob?.size,
@@ -991,18 +991,20 @@ async function runPrimingTrial(trial, i) {
           trialId: trial.trialId,
           phase: "priming"
         };
-        console.log("🎤 PRIME UPLOAD TRY:", meta);
+        console.log("🎤 PRIME UPLOAD START (background):", meta);
         console.log("   Blob size:", primeAudioBlob.size, "bytes");
       
-        try {
-          const out = await uploadAudioBlob(primeAudioBlob, meta);
-          console.log("✅ PRIME UPLOAD OK:", out);
-          primeAudioFileId = out.fileId || "";
-        } catch (e) {
-          console.error("❌ Prime audio upload failed:", e);
-          console.error("   Error details:", e.message);
-          console.error("   Stack:", e.stack);
-        }
+        // ✅ await 제거 - 백그라운드에서 업로드
+        uploadAudioBlob(primeAudioBlob, meta)
+          .then(out => {
+            console.log("✅ PRIME UPLOAD OK:", out);
+            primeAudioFileId = out.fileId || "";
+          })
+          .catch(e => {
+            console.error("❌ Prime audio upload failed:", e);
+            console.error("   Error details:", e.message);
+          });
+
       }
     } else {
       console.log("⚠️ Prime audio not uploaded - condition not met");
@@ -1065,7 +1067,7 @@ async function runPrimingTrial(trial, i) {
     }
   }
   
-  // ✅ target 업로드: 모든 trial
+  // ✅ target 업로드: 백그라운드 비동기
   let targetAudioFileId = "";
   
   console.log("📊 Target audio check:", {
@@ -1090,19 +1092,20 @@ async function runPrimingTrial(trial, i) {
         trialId: trial.trialId,
         phase: "priming"
       };
-      console.log("🎤 TARGET UPLOAD TRY:", meta);
+      console.log("🎤 TARGET UPLOAD START (background):", meta);
       console.log("   Blob size:", targetRec.blob.size, "bytes");
       console.log("   Onset:", targetRec.onset_ms, "ms");
       
-      try {
-        const out = await uploadAudioBlob(targetRec.blob, meta);
-        console.log("✅ TARGET UPLOAD OK:", out);
-        targetAudioFileId = out.fileId || "";
-      } catch (e) {
-        console.error("❌ Target audio upload failed:", e);
-        console.error("   Error details:", e.message);
-        console.error("   Stack:", e.stack);
-      }
+      // ✅ await 제거 - 백그라운드에서 업로드
+      uploadAudioBlob(targetRec.blob, meta)
+        .then(out => {
+          console.log("✅ TARGET UPLOAD OK:", out);
+          targetAudioFileId = out.fileId || "";
+        })
+        .catch(e => {
+          console.error("❌ Target audio upload failed:", e);
+          console.error("   Error details:", e.message);
+        });
     }
   } else {
     console.log("⚠️ Target audio not uploaded - condition not met");
@@ -1154,7 +1157,7 @@ async function runPrimingTrial(trial, i) {
     animacy_response: animacyResp ?? "",
     animacy_rt_ms: animacyRT ?? "",
   
-    // 업로드한 경우만
+    // 업로드 (백그라운드 진행 중, fileId는 나중에 audio_uploaded 이벤트에서 기록됨)
     prime_audio_fileId: primeAudioFileId ?? "",
     target_audio_fileId: targetAudioFileId ?? "",
   
@@ -1528,26 +1531,4 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
