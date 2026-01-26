@@ -977,9 +977,7 @@ async function runPrimingTrial(trial, i) {
 
   if (assignedGroup === "overt") {
     statusEl.textContent = "말하세요";  // ✅ 이미 있음
-    statusEl.style.fontSize = "32px";
-    statusEl.style.fontWeight = "bold";
-    statusEl.style.color = "#ff4444";
+    statusEl.style.fontSize = "20px";
 
     const res = await recordPrimeWithVoiceKey(2000);  // ✅ 이미 2초
     primeVoiceRT = res.prime_voice_rt_ms;
@@ -989,7 +987,7 @@ async function runPrimingTrial(trial, i) {
     primeSpoken = evalRes.spoken;
     primeCheckReason = evalRes.reason;
 
-    // 🔹 Prime 오디오 업로드 (백그라운드 비동기, 20% 샘플링)
+    // 🔹 Prime 오디오 업로드 (백그라운드 비동기)
     console.log("📊 Prime audio check:", {
       hasBlob: !!primeAudioBlob,
       blobSize: primeAudioBlob?.size,
@@ -997,8 +995,8 @@ async function runPrimingTrial(trial, i) {
       sessionData: session ? {pid: session.pid, sessionId: session.sessionId, folderId: session.folderId} : null
     });
     
-    // 🔹 Prime 오디오 업로드 (백그라운드 비동기, 20% 샘플링)
-    if (primeAudioBlob && primeAudioBlob.size > 100 && Math.random() < 0.20) {
+    // 🔹 Prime 오디오 업로드 (백그라운드 비동기)
+    if (primeAudioBlob && primeAudioBlob.size > 100) {
       if (!session || !session.folderId) {
         console.error("❌ Cannot upload - session not initialized!", session);
       } else {
@@ -1012,19 +1010,26 @@ async function runPrimingTrial(trial, i) {
           trialId: trial.trialId,
           phase: "priming"
         };
-        console.log("🎤 PRIME UPLOAD START (background, sampled):", meta);
-        console.log("   Blob size:", primeAudioBlob.size, "bytes");
-      
-        // ✅ await 제거 - 백그라운드에서 업로드
-        uploadAudioBlob(primeAudioBlob, meta)
-          .then(out => {
-            console.log("✅ PRIME UPLOAD OK:", out);
-            primeAudioFileId = out.fileId || "";
-          })
-          .catch(e => {
-            console.error("❌ Prime audio upload failed:", e);
-            console.error("   Error details:", e.message);
-          });
+    
+        // key는 "trial마다 유니크"해야 덮어쓰기 없음
+        const key = meta.filename; // 또는 `${session.pid}_${trial.trialId}_prime`
+    
+        // 1) 로컬(IDB)에 먼저 저장
+        await idbPut(key, primeAudioBlob, meta);
+    
+        // 2) 업로드 큐에 넣고 백그라운드 업로드
+        enqueueUpload(key, primeAudioBlob, meta);
+    
+        // (선택) 로깅
+        appendRow({
+          event: "audio_queued",
+          ts_iso: new Date().toISOString(),
+          pid: meta.pid,
+          sessionId: meta.sessionId,
+          audio_key: key,
+          audio_type: meta.type,
+          trialId: meta.trialId
+        });
       }
     } else {
       console.log("⚠️ Prime audio not uploaded (size check or sampling)");
@@ -1032,9 +1037,7 @@ async function runPrimingTrial(trial, i) {
 
   } else if (assignedGroup === "covert") {
     statusEl.textContent = "속으로 말하세요";
-    statusEl.style.fontSize = "32px";
-    statusEl.style.fontWeight = "bold";
-    statusEl.style.color = "#4444ff";
+    statusEl.style.fontSize = "20px";
     await sleep(2000);
 
   } else {
@@ -1067,9 +1070,7 @@ async function runPrimingTrial(trial, i) {
   imgEl.classList.remove("hidden");  // ✅ 이미지 표시
 
   statusEl.textContent = "말하세요";
-  statusEl.style.fontSize = "32px";
-  statusEl.style.fontWeight = "bold";
-  statusEl.style.color = "#ff4444";
+  statusEl.style.fontSize = "20px";
   const target_display_ts = new Date().toISOString();
 
   // ✅ 음성 감지 + 녹음을 한 번에
@@ -1083,11 +1084,11 @@ async function runPrimingTrial(trial, i) {
   if (targetRT === null) {
     // 재시도 로직 (필요시)
     statusEl.textContent = "말해 주세요!";
-    statusEl.style.fontSize = "36px";
+    statusEl.style.fontSize = "28px";
     statusEl.style.color = "#ff0000";
     await sleep(600);
     statusEl.textContent = "말하세요";
-    statusEl.style.fontSize = "32px";
+    statusEl.style.fontSize = "28px";
     statusEl.style.color = "#ff4444";
     
     const retryRec = await recordWindow(3000);
@@ -1570,4 +1571,5 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
+
 
