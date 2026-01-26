@@ -247,8 +247,7 @@
 
 <!-- ================== JS LOGIC ================== -->
 <script type="module">
-import { jsonp, createSession, appendRow } from "./js/api.js";
-import { uploadAudioBlob } from "./js/api.js";
+import { jsonp, createSession, appendRow, uploadAudioBlob } from "./js/api.js";
 
 /* ---------- DOM ---------- */
 const screenConsent = document.getElementById("screen-consent");
@@ -970,8 +969,8 @@ async function runPrimingTrial(trial, i) {
     primeSpoken = evalRes.spoken;
     primeCheckReason = evalRes.reason;
 
-    // 🔹 15% 랜덤 업로드
-    if (primeAudioBlob) {
+    // 🔹 Prime 오디오 업로드 (모든 trial)
+    if (primeAudioBlob && primeAudioBlob.size > 100) {
       const meta = {
         pid: session.pid,
         sessionId: session.sessionId,
@@ -982,15 +981,18 @@ async function runPrimingTrial(trial, i) {
         trialId: trial.trialId,
         phase: "priming"
       };
-      console.log("UPLOAD TRY", meta, primeAudioBlob.size);
+      console.log("🎤 PRIME UPLOAD TRY:", meta);
+      console.log("   Blob size:", primeAudioBlob.size, "bytes");
     
       try {
         const out = await uploadAudioBlob(primeAudioBlob, meta);
-        console.log("UPLOAD OK", out);
+        console.log("✅ PRIME UPLOAD OK:", out);
         primeAudioFileId = out.fileId || "";
       } catch (e) {
-        console.error("Prime audio upload failed:", e);
+        console.error("❌ Prime audio upload failed:", e);
       }
+    } else {
+      console.log("⚠️ Prime audio not uploaded - blob:", primeAudioBlob, "size:", primeAudioBlob?.size);
     }
 
   } else if (assignedGroup === "covert") {
@@ -1010,7 +1012,11 @@ async function runPrimingTrial(trial, i) {
   /* ---------- ISI ---------- */
   imgEl.classList.add("hidden");
   statusEl.textContent = "";
+  
+  // ✅ ISI에 fixation 표시
+  fixEl.classList.remove("hidden");
   await sleep(150);
+  fixEl.classList.add("hidden");
 
   /* ---------- Target ---------- */
   imgEl.src = trial.targetImg;
@@ -1044,10 +1050,10 @@ async function runPrimingTrial(trial, i) {
     }
   }
   
-  // ✅ target 업로드: 10% 샘플 + 말한 경우만
+  // ✅ target 업로드: 모든 trial (10% → 100%)
   let targetAudioFileId = "";
   
-  if (targetRec.blob && targetRec.blob.size > 1500 && targetRec.onset_ms !== null && Math.random() < 0.10) {
+  if (targetRec.blob && targetRec.blob.size > 100 && targetRec.onset_ms !== null) {
     const meta = {
       pid: session.pid,
       sessionId: session.sessionId,
@@ -1058,12 +1064,23 @@ async function runPrimingTrial(trial, i) {
       trialId: trial.trialId,
       phase: "priming"
     };
+    console.log("🎤 TARGET UPLOAD TRY:", meta);
+    console.log("   Blob size:", targetRec.blob.size, "bytes");
+    console.log("   Onset:", targetRec.onset_ms, "ms");
+    
     try {
-      const up = await uploadAudioBlob(targetRec.blob, meta);
-      targetAudioFileId = up.fileId || "";
+      const out = await uploadAudioBlob(targetRec.blob, meta);
+      console.log("✅ TARGET UPLOAD OK:", out);
+      targetAudioFileId = out.fileId || "";
     } catch (e) {
-      console.error("Target audio upload failed:", e);
+      console.error("❌ Target audio upload failed:", e);
+      console.error("   Error details:", e.message, e.stack);
     }
+  } else {
+    console.log("⚠️ Target audio not uploaded");
+    console.log("   Has blob:", !!targetRec.blob);
+    console.log("   Blob size:", targetRec.blob?.size);
+    console.log("   Onset:", targetRec.onset_ms);
   }
   
   imgEl.classList.remove("hidden");
@@ -1132,10 +1149,16 @@ async function recordWindow(maxMs = 2000, threshold = VOICE_THRESHOLD) {
   recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
   recorder.start(250); // timeslice: 짧은 녹음에서 blob 비는 문제 방지
 
+  const startTime = performance.now(); // ✅ 시작 시간 기록
   const onset = await detectVoiceOnset(maxMs, threshold);
 
-  // 윈도우 끝까지 녹음 유지(원하면 onset+300ms 같은 정책도 가능)
-  await sleep( Math.max(0, maxMs - (onset ?? maxMs)) );
+  // ✅ 수정: 음성 감지되면 500ms만 더 녹음, 아니면 남은 시간만큼 대기
+  if (onset !== null) {
+    await sleep(500); // 음성 시작 후 500ms만 더 녹음
+  } else {
+    const elapsed = performance.now() - startTime; // 이미 경과한 시간
+    await sleep(Math.max(0, maxMs - elapsed)); // 남은 시간만큼 대기
+  }
 
   recorder.stop();
   await new Promise(r => recorder.onstop = r);
@@ -1459,4 +1482,3 @@ runNextAFCTrial();
 </script>
 </body>
 </html>
-
