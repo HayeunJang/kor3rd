@@ -497,34 +497,31 @@ async function runPriming() {
       }
     }
     
-    // 데이터 저장
-    try {
-      await appendRow({
-        event: "trial",
-        pid: session.pid,
-        listNum: listNumUsed,
-        group: assignedGroup,
-        trialIdx: i + 1,
-        onset: rec.onset,
-        timeout: rec.onset === null, // ★ timeout 정보 추가
-        trialId: trial.pair_id
-      });
-      
-      // ★ 오디오 업로드 (비동기로 처리하되 실패 카운트)
-      uploadAudioBlob(rec.blob, {
-        pid: session.pid,
-        sessionId: session.sessionId,
-        folderId: session.folderId,
-        filename: `${session.pid}_T${i + 1}.webm`,
-        trialId: trial.pair_id
-      }).catch(err => {
-        uploadFailCount++;
-        console.error(`❌ 오디오 업로드 실패 (${uploadFailCount}):`, err);
-      });
-      
-    } catch (err) {
+    // ★ 데이터 저장 (비동기 처리 - 기다리지 않음)
+    appendRow({
+      event: "trial",
+      pid: session.pid,
+      listNum: listNumUsed,
+      group: assignedGroup,
+      trialIdx: i + 1,
+      onset: rec.onset,
+      timeout: rec.onset === null,
+      trialId: trial.pair_id
+    }).catch(err => {
       console.error("❌ 데이터 저장 에러:", err);
-    }
+    });
+    
+    // ★ 오디오 업로드 (비동기로 처리)
+    uploadAudioBlob(rec.blob, {
+      pid: session.pid,
+      sessionId: session.sessionId,
+      folderId: session.folderId,
+      filename: `${session.pid}_T${i + 1}.webm`,
+      trialId: trial.pair_id
+    }).catch(err => {
+      uploadFailCount++;
+      console.error(`❌ 오디오 업로드 실패 (${uploadFailCount}):`, err);
+    });
     
     img.classList.add("hidden");
     document.getElementById("primingStatus").textContent = "";
