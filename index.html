@@ -30,7 +30,7 @@
     /* 버튼 및 입력 서식 */
     button { padding: 12px 24px; font-size: 16px; cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; transition: all 0.2s; }
     button:hover { background: #f0f0f0; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; background: #eee; }
     #btnAnimate, #btnInanimate { padding: 20px 40px; font-size: 20px; font-weight: bold; min-width: 150px; }
     #btnAnimate { border-color: #4CAF50; color: #2e7d32; }
     #btnInanimate { border-color: #f44336; color: #c62828; }
@@ -46,8 +46,8 @@
 <div class="card" id="screen-consent">
   <h1 style="margin-top:0;">연구 참여 동의</h1>
   <p class="note">
-    본 실험은 그림을 보고 단어를 말하거나 생물/무생물을 판단하는 과제입니다. [cite: 1, 2]<br>
-    반응시간과 음성이 녹음되어 서버에 저장됩니다. [cite: 1, 2]<br>
+    본 실험은 그림을 보고 단어를 말하는 과제입니다.<br>
+    반응시간과 음성이 녹음되어 서버에 저장됩니다.<br>
     중간에 잦은 오류가 발생하거나 응답이 없을 경우 실험이 자동 종료될 수 있습니다.
   </p>
   <label><input type="checkbox" id="consentCheck"> 연구 참여에 동의합니다.</label>
@@ -63,7 +63,7 @@
 
 <div class="card hidden" id="screen-priming">
   <div id="experimentHeader">
-    <div class="progress-container"><div id="mainProgressBar"></div></div>
+    <div class="progress-container"><div id="mainProgressBar" class="progress-bar"></div></div>
     <p id="trialCounter">0 / 108</p>
   </div>
 
@@ -96,16 +96,14 @@
 <script type="module">
   import { jsonp, createSession, appendRow, uploadAudioBlob } from "./js/api.js";
 
-  /* 상태 변수 */
   let session = null;
-  let assignedGroup = "overt"; // 기본값
+  let assignedGroup = "overt";
   let currentTrials = [];
   let timeoutCount = 0;
   let uploadFailCount = 0;
   const FAIL_LIMIT = 10;
   const TOTAL_TRIALS_NUM = 108;
 
-  /* DOM 요소 */
   const screens = {
     consent: document.getElementById("screen-consent"),
     priming: document.getElementById("screen-priming"),
@@ -114,15 +112,29 @@
   const primingStatus = document.getElementById("primingStatus");
   const liveMicFill = document.getElementById("liveMicFill");
 
-  /* 1. 세션 준비 및 리스트 로드 */
+  // 버튼 활성화 로직
+  function validateForm() {
+    const consent = document.getElementById("consentCheck").checked;
+    const nick = document.getElementById("nick").value.trim();
+    const birth = document.getElementById("birthYM").value;
+    const gender = document.getElementById("gender").value;
+    const native = document.getElementById("nativeLang").value.trim();
+    
+    document.getElementById("btnStart").disabled = !(consent && nick && birth && gender && native);
+  }
+
+  // 입력 감지 이벤트 등록
+  ["consentCheck", "nick", "birthYM", "gender", "nativeLang"].forEach(id => {
+    document.getElementById(id).addEventListener("input", validateForm);
+    document.getElementById(id).addEventListener("change", validateForm);
+  });
+
   async function initExperiment() {
-    // 3개 리스트 중 하나 무작위 선택
     const listNum = Math.floor(Math.random() * 3) + 1;
     const response = await fetch(`./stim/pairs_list_${listNum}.csv`);
     const text = await response.text();
     currentTrials = parseCSV(text);
     
-    // 그룹 할당 (overt/covert/nonaming 중 무작위) [cite: 33]
     const groups = ["overt", "covert", "nonaming"];
     assignedGroup = groups[Math.floor(Math.random() * groups.length)];
   }
@@ -132,15 +144,13 @@
     const headers = lines[0].split(",");
     return lines.slice(1).map(line => {
       const values = line.split(",");
-      return headers.reduce((obj, h, i) => ({ ...obj, [h.trim()]: values[i].trim() }), {});
+      return headers.reduce((obj, h, i) => ({ ...obj, [h.trim()]: (values[i] || "").trim() }), {});
     });
   }
 
-  /* 2. 실시간 마이크 모니터링 */
   function startMicMonitoring() {
     if (!window.analyser) return;
     const dataArray = new Uint8Array(window.analyser.fftSize);
-    
     function updateBar() {
       if (screens.priming.classList.contains("hidden")) return;
       window.analyser.getByteTimeDomainData(dataArray);
@@ -156,22 +166,16 @@
     updateBar();
   }
 
-  /* 3. 녹음 로직 (3초 고정) */
   async function recordThreeSeconds() {
     const chunks = [];
     const recorder = new MediaRecorder(window.micStream);
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.start();
-
-    // 음성 인식(onset) 감지는 병렬 수행
     const onsetPromise = detectVoiceOnset(3000, 0.02);
-
-    await new Promise(r => setTimeout(r, 3000)); // 3초 대기 
+    await new Promise(r => setTimeout(r, 3000));
     recorder.stop();
     const onset = await onsetPromise;
-    const blob = await new Promise(r => {
-      recorder.onstop = () => r(new Blob(chunks, { type: "audio/webm" }));
-    });
+    const blob = await new Promise(r => { recorder.onstop = () => r(new Blob(chunks, { type: "audio/webm" })); });
     return { onset, blob };
   }
 
@@ -198,13 +202,11 @@
     });
   }
 
-  /* 4. 실험 중단 처리 */
   function failAndTerminate(msg) {
     alert(`실험 중단: ${msg}\n환경을 점검하고 다시 시작해 주세요.`);
     location.reload();
   }
 
-  /* 5. 메인 루프 */
   async function runExperiment() {
     screens.consent.classList.add("hidden");
     screens.priming.classList.remove("hidden");
@@ -212,24 +214,20 @@
 
     for (let i = 0; i < currentTrials.length; i++) {
       const trial = currentTrials[i];
-      
-      // UI 업데이트
       document.getElementById("mainProgressBar").style.width = ((i / TOTAL_TRIALS_NUM) * 100) + "%";
       document.getElementById("trialCounter").textContent = `${i + 1} / ${TOTAL_TRIALS_NUM}`;
       
-      // Fixation (300ms)
       document.getElementById("primingFixation").classList.remove("hidden");
       await new Promise(r => setTimeout(r, 300));
       document.getElementById("primingFixation").classList.add("hidden");
 
-      // Prime 제시
       const img = document.getElementById("primingImg");
-      img.src = `./stim/${trial.prime_pic}`; // pairs.csv의 prime_pic 필드 사용 
+      img.src = `./stim/${trial.prime_pic}`;
       img.classList.remove("hidden");
       
       if (assignedGroup === "overt") {
         primingStatus.textContent = "말하세요";
-        await recordThreeSeconds(); // 분석용이나 업로드는 생략 가능(필요시 추가)
+        await recordThreeSeconds();
       } else if (assignedGroup === "nonaming") {
         primingStatus.textContent = "생물인가요?";
         document.getElementById("animacyButtons").classList.remove("hidden");
@@ -239,52 +237,43 @@
         });
         document.getElementById("animacyButtons").classList.add("hidden");
       } else {
-        await new Promise(r => setTimeout(r, 1500));
+        primingStatus.textContent = "그림을 보세요";
+        await new Promise(r => setTimeout(r, 2000));
       }
       
       img.classList.add("hidden");
       primingStatus.textContent = "";
-      await new Promise(r => setTimeout(r, 200)); // ISI
+      await new Promise(r => setTimeout(r, 200));
 
-      // Target 제시
       img.src = `./stim/${trial.target_pic}`;
       img.classList.remove("hidden");
       primingStatus.textContent = "빨리 말하세요!";
 
       const targetData = await recordThreeSeconds();
-      
-      // 타임아웃 체크
       if (targetData.onset === null) {
         timeoutCount++;
         if (timeoutCount >= FAIL_LIMIT) return failAndTerminate("반복적인 무응답");
       }
 
-      // 업로드 (비동기 처리)
       const meta = {
-        pid: session.pid,
-        sessionId: session.sessionId,
-        folderId: session.folderId,
-        filename: `${session.pid}_T${i}_target.webm`,
-        trialId: trial.pair_id,
-        phase: "priming",
-        type: "target"
+        pid: session.pid, sessionId: session.sessionId, folderId: session.folderId,
+        filename: `${session.pid}_T${i}_target.webm`, trialId: trial.pair_id,
+        phase: "priming", type: "target"
       };
 
-      uploadAudioBlob(targetRec.blob, meta).catch(() => {
+      uploadAudioBlob(targetData.blob, meta).catch(() => {
         uploadFailCount++;
         if (uploadFailCount >= FAIL_LIMIT) failAndTerminate("연결 오류 및 업로드 실패");
       });
 
       img.classList.add("hidden");
       primingStatus.textContent = "";
-      await new Promise(r => setTimeout(r, 800)); // ITI
+      await new Promise(r => setTimeout(r, 800));
     }
-
     screens.priming.classList.add("hidden");
     screens.contact.classList.remove("hidden");
   }
 
-  /* 초기 이벤트 바인딩 */
   document.getElementById("btnStart").onclick = async () => {
     try {
       window.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -292,17 +281,13 @@
       window.analyser = audioCtx.createAnalyser();
       audioCtx.createMediaStreamSource(window.micStream).connect(window.analyser);
       
-      const pid = "P" + Date.now();
-      session = await createSession(pid, { primeModeGroup: assignedGroup }); [cite: 30, 31, 32]
       await initExperiment();
+      const pid = document.getElementById("nick").value.trim() + "_" + Date.now();
+      session = await createSession(pid, { primeModeGroup: assignedGroup });
       runExperiment();
     } catch (e) {
-      alert("마이크 권한이 필요합니다.");
+      alert("마이크 권한이 필요합니다: " + e.message);
     }
-  };
-
-  document.getElementById("consentCheck").onchange = e => {
-    document.getElementById("btnStart").disabled = !e.target.checked;
   };
 
   document.getElementById("btnSubmitContact").onclick = async () => {
@@ -310,12 +295,11 @@
     if (!val) return alert("연락처를 입력해 주세요.");
     await jsonp({
       action: "appendContact",
-      contact_json: JSON.stringify({ pid: session.pid, sessionId: session.sessionId, contact_value: val }) [cite: 49, 50, 51]
+      contact_json: JSON.stringify({ pid: session.pid, sessionId: session.sessionId, contact_value: val })
     });
     alert("감사합니다. 실험이 종료되었습니다.");
     location.href = "about:blank";
   };
 </script>
-
 </body>
 </html>
