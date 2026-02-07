@@ -1,131 +1,15 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Korean Priming Experiment 2026</title>
-  <style>
-    html, body { height: 100%; font-family: system-ui, sans-serif; margin: 0; background: #fff; display: flex; justify-content: center; align-items: flex-start; padding: 24px; box-sizing: border-box; }
-    .card { width: min(760px, 100%); border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 0 0 24px 0; }
-    .hidden { display: none !important; }
-    #afcChoices { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-    #afcChoices button { width:100%; padding: 12px; font-size: 16px; cursor: pointer; }
-    label { display:block; margin: 10px 0 6px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
-    button { padding: 10px 14px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .note { font-size: 14px; color:#444; line-height: 1.6; }
-    #experimentHeader { width: 100%; margin-bottom: 20px; }
-    .progress-container { width: 100%; background: #eee; border-radius: 5px; height: 10px; overflow: hidden; }
-    #mainProgressBar { width: 0%; height: 100%; background: #4CAF50; transition: width 0.3s; }
-    .mic-gauge-container { width: 200px; height: 8px; background: #ddd; border-radius: 4px; margin: 10px auto; overflow: hidden; }
-    #liveMicFill { width: 0%; height: 100%; background: #2196F3; }
-  </style>
-</head>
-
-<body>
-
-<div class="card" id="screen-consent">
-  <h1 style="margin-top:0;">실험 참여</h1>
-  <h2>연구 참여 동의</h2>
-  <p class="note">본 실험은 그림 학습, 테스트, 본 실험으로 구성됩니다. 모든 응답과 정보는 연구 목적으로만 사용됩니다.</p>
-  <label><input type="checkbox" id="consentCheck"> 연구 참여에 동의합니다.</label>
-  <hr>
-  <h3>참가자 정보</h3>
-  <label>닉네임 (실명X)</label><input id="nick" placeholder="예: HJ">
-  <label>생년월</label><input id="birthYM" type="month">
-  <label>성별</label>
-  <select id="gender"><option value="">선택</option><option value="male">남</option><option value="female">여</option></select>
-  <label>모국어</label><input id="nativeLang" value="한국어">
-  <label>외국어(들)</label><input id="otherLangs" placeholder="없으면 '없음'">
-  <button id="btnStart" disabled>동의하고 시작</button>
-</div>
-
-<div class="card hidden" id="screen-ready">
-  <h2>준비 완료</h2><p>이제부터 학습 단계를 시작합니다.</p><button id="btnContinue">계속</button>
-</div>
-
-<div class="card hidden" id="screen-study">
-  <h2>학습</h2>
-  <p class="note" id="studyProgress">그림과 단어를 잘 보고 기억해 주세요. (2회 반복)</p>
-  <div style="height:380px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-    <div id="fixation" class="hidden" style="font-size:48px;">+</div>
-    <img id="studyImg" class="hidden" style="max-width:420px; max-height:320px;">
-    <div id="studyLabel" class="hidden" style="font-size:28px; margin-top:10px;"></div>
-  </div>
-  <div style="margin-top:16px; text-align:center;">
-    <button id="btnStartStudy">학습 시작</button>
-    <button id="btnNextAfterStudy" class="hidden">다음 (4지선다 테스트)</button>
-  </div>
-</div>
-
-<div class="card hidden" id="screen-afc">
-  <h2>4지선다 테스트</h2>
-  <div style="text-align:center;"><img id="afcImg" style="max-width:420px; max-height:320px;" /></div>
-  <div id="afcChoices"></div>
-  <p class="note" id="afcTimer" style="text-align:center;"></p>
-</div>
-
-<div class="card hidden" id="screen-afc-result">
-  <h2>테스트 결과</h2>
-  <p id="afcResultText"></p>
-  <div style="margin-top:16px; text-align:center;">
-    <button id="btnAfcRemedial" class="hidden">오답 다시 학습 후 재시험</button>
-    <button id="btnAfcProceed" class="hidden">본 실험 진행</button>
-  </div>
-</div>
-
-<div class="card hidden" id="screen-mic">
-  <h2>마이크 확인</h2>
-  <p class="note" id="micText">준비가 되면 버튼을 눌러주세요.</p>
-  <progress id="micMeter" value="0" max="1" style="width:100%; height:18px;"></progress>
-  <div style="margin-top:16px; text-align:center;">
-    <button id="btnMicStart">마이크 권한 확인</button>
-    <button id="btnMicNext" class="hidden">본 실험 시작</button>
-  </div>
-</div>
-
-<div class="card hidden" id="screen-priming">
-  <div id="experimentHeader">
-    <div class="progress-container"><div id="mainProgressBar"></div></div>
-    <p id="trialCounter" style="text-align:right; font-size:12px;">0 / 108</p>
-  </div>
-  <div style="height:400px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-    <div id="primingFixation" class="hidden" style="font-size:48px;">+</div>
-    <img id="primingImg" class="hidden" style="max-width:420px; max-height:320px;">
-  </div>
-  <div class="mic-monitor">
-    <div class="mic-gauge-container"><div id="liveMicFill"></div></div>
-  </div>
-  <p id="primingStatus" style="text-align:center; font-weight:bold; font-size:24px; color:#d32f2f; min-height:1.2em;"></p>
-  <div id="animacyButtons" class="hidden" style="display:flex; gap:10px; justify-content:center;">
-    <button id="btnAnimate">생물</button><button id="btnInanimate">무생물</button>
-  </div>
-</div>
-
-<div class="card hidden" id="screen-contact">
-  <h2>실험 종료</h2>
-  <label>연락처</label><input id="contactValue" placeholder="010-1234-5678">
-  <button id="btnSubmitContact">제출 및 종료</button>
-</div>
-
 <script type="module">
 import { jsonp, createSession, appendRow, uploadAudioBlob } from "./js/api.js";
 
-/* State */
+/* 글로벌 상태 */
 let session = null, assignedGroup = null, STUDY_ITEMS = [], PRIMING_TRIALS = [];
 let timeoutCount = 0, uploadFailCount = 0, listNumUsed = 0;
+let afcIdx = 0, afcScore = 0, afcResponses = [], afcWrongItems = [], isRemedial = false;
 const FAIL_LIMIT = 10, TOTAL_PRIMING = 108, AFC_THRESHOLD = 0.9;
 
-/* UI Helpers */
-const showScreen = (s) => { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); document.getElementById('screen-'+s).classList.remove('hidden'); };
-document.getElementById("consentCheck").onclick = (e) => { document.getElementById("btnStart").disabled = !e.target.checked; };
-
-/* 1. Initialization */
+/* 1. 세션 시작 및 정보 저장 */
 document.getElementById("btnStart").onclick = async () => {
-  document.getElementById("btnStart").disabled = true;
   listNumUsed = Math.floor(Math.random() * 3) + 1;
-  
   const [itemsData, pairsData] = await Promise.all([
     fetch("./stim/items.csv").then(r => r.text()).then(parseCSV),
     fetch(`./stim/pairs_list_${listNumUsed}.csv`).then(r => r.text()).then(parseCSV)
@@ -137,168 +21,78 @@ document.getElementById("btnStart").onclick = async () => {
   PRIMING_TRIALS = pairsData;
   assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
   
-  const participant = {
-    nick: document.getElementById("nick").value.trim(),
-    birthYM: document.getElementById("birthYM").value,
+  // 참가자 상세 정보 객체
+  const participant = { 
+    nick: document.getElementById("nick").value, 
+    birthYM: document.getElementById("birthYM").value, 
     gender: document.getElementById("gender").value,
-    nativeLang: document.getElementById("nativeLang").value.trim(),
-    otherLangs: document.getElementById("otherLangs").value.trim()
+    nativeLang: document.getElementById("nativeLang").value,
+    otherLangs: document.getElementById("otherLangs").value
   };
 
-  // 세션 생성 시 리스트 번호와 참가자 정보 포함
+  // session_start 이벤트와 함께 모든 정보 저장
   session = await createSession(participant.nick + "_" + Date.now(), { 
     primeModeGroup: assignedGroup, 
     listNum: listNumUsed,
-    participant 
+    participant: participant 
   });
   
   showScreen("ready");
 };
 
-/* 2. Study & 4AFC (원본 로직 유지) */
-document.getElementById("btnContinue").onclick = () => showScreen("study");
-document.getElementById("btnStartStudy").onclick = async () => {
-  document.getElementById("btnStartStudy").classList.add("hidden");
-  for (let pass = 1; pass <= 2; pass++) {
-    const shuffled = [...STUDY_ITEMS].sort(() => Math.random() - 0.5);
-    for (let i = 0; i < shuffled.length; i++) {
-      document.getElementById("studyProgress").textContent = `학습 ${pass}/2회 - ${i+1}/${shuffled.length}`;
-      document.getElementById("fixation").classList.remove("hidden");
-      await new Promise(r => setTimeout(r, 200));
-      document.getElementById("fixation").classList.add("hidden");
-      document.getElementById("studyImg").src = shuffled[i].img;
-      document.getElementById("studyImg").classList.remove("hidden");
-      document.getElementById("studyLabel").textContent = shuffled[i].word;
-      document.getElementById("studyLabel").classList.remove("hidden");
-      await new Promise(r => setTimeout(r, 800));
-      document.getElementById("studyImg").classList.add("hidden");
-      document.getElementById("studyLabel").classList.add("hidden");
-    }
-  }
-  document.getElementById("btnNextAfterStudy").classList.remove("hidden");
-};
-
-document.getElementById("btnNextAfterStudy").onclick = () => startAFC(STUDY_ITEMS);
-let afcIdx = 0, afcScore = 0, afcList = [], isRemedial = false;
-function startAFC(list) { afcList = [...list].sort(() => Math.random() - 0.5); afcIdx = 0; afcScore = 0; showScreen("afc"); runNextAFC(); }
-function runNextAFC() {
-  if (afcIdx >= afcList.length) return finishAFC();
-  const item = afcList[afcIdx];
-  document.getElementById("afcImg").src = item.img;
-  const choices = [item, ...STUDY_ITEMS.filter(i => i.itemId !== item.itemId).sort(() => Math.random() - 0.5).slice(0, 3)].sort(() => Math.random() - 0.5);
-  const container = document.getElementById("afcChoices");
-  container.innerHTML = "";
-  choices.forEach(c => {
-    const b = document.createElement("button"); b.textContent = c.word;
-    b.onclick = () => { if (c.itemId === item.itemId) afcScore++; afcIdx++; runNextAFC(); };
-    container.appendChild(b);
-  });
+/* 2. 4AFC 테스트 결과 저장 추가 */
+async function runNextAFC(list, phase) {
+  if (afcIdx >= list.length) return finishAFC(phase);
+  const item = list[afcIdx];
+  // ... (UI 로직)
+  btn.onclick = async () => { 
+    const isCorrect = (c.itemId === item.itemId);
+    if(isCorrect) afcScore++; else afcWrongItems.push(item);
+    
+    // 각 4AFC 시행 데이터 저장
+    appendRow({
+      event: "afc_trial", pid: session.pid, sessionId: session.sessionId,
+      phase: phase, trialIdx: afcIdx + 1, targetId: item.itemId,
+      response: c.word, correct: isCorrect
+    });
+    
+    afcIdx++; runNextAFC(list, phase); 
+  };
 }
-function finishAFC() {
-  const acc = afcScore / afcList.length; const passed = acc >= AFC_THRESHOLD; showScreen("afcResult");
-  document.getElementById("afcResultText").innerHTML = `정답률: ${Math.round(acc*100)}% (${passed ? "통과" : "미달"})`;
-  if (passed) document.getElementById("btnAfcProceed").classList.remove("hidden");
-  else if (!isRemedial) { isRemedial = true; document.getElementById("btnAfcRemedial").classList.remove("hidden"); }
-  else { setTimeout(() => location.reload(), 3000); }
-}
-document.getElementById("btnAfcRemedial").onclick = () => startAFC(STUDY_ITEMS);
-document.getElementById("btnAfcProceed").onclick = () => showScreen("mic");
 
-/* 3. Mic & Priming (Main) */
-document.getElementById("btnMicStart").onclick = async () => {
-  window.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  window.analyser = audioCtx.createAnalyser();
-  audioCtx.createMediaStreamSource(window.micStream).connect(window.analyser);
-  document.getElementById("btnMicStart").classList.add("hidden");
-  document.getElementById("btnMicNext").classList.remove("hidden");
-};
-document.getElementById("btnMicNext").onclick = () => { showScreen("priming"); runPriming(); startMicMonitoring(); };
-
+/* 3. 본 실험 데이터 저장 (Onset 및 Timeout 포함) */
 async function runPriming() {
   for (let i = 0; i < PRIMING_TRIALS.length; i++) {
     const trial = PRIMING_TRIALS[i];
-    document.getElementById("mainProgressBar").style.width = ((i+1)/TOTAL_PRIMING*100) + "%";
-    document.getElementById("trialCounter").textContent = `${i+1} / ${TOTAL_PRIMING}`;
+    // ... (자극 제시 로직)
+
+    const recData = await record(3000);
     
-    document.getElementById("primingFixation").classList.remove("hidden");
-    await new Promise(r => setTimeout(r, 300));
-    document.getElementById("primingFixation").classList.add("hidden");
+    // 무응답 여부 체크 및 카운트
+    const isTimeout = (recData.onset === null);
+    if (isTimeout) timeoutCount++;
 
-    const img = document.getElementById("primingImg");
-    img.src = "./stim/" + trial.prime_pic;
-    img.classList.remove("hidden");
-
-    if (assignedGroup === "overt") { document.getElementById("primingStatus").textContent = "말하세요"; await record(3000); }
-    else if (assignedGroup === "nonaming") {
-      document.getElementById("primingStatus").textContent = "생물?";
-      document.getElementById("animacyButtons").classList.remove("hidden");
-      await new Promise(r => {
-        document.getElementById("btnAnimate").onclick = () => { document.getElementById("animacyButtons").classList.add("hidden"); r(); };
-        document.getElementById("btnInanimate").onclick = () => { document.getElementById("animacyButtons").classList.add("hidden"); r(); };
-      });
-    } else { document.getElementById("primingStatus").textContent = "보세요"; await new Promise(r => setTimeout(r, 2000)); }
-    
-    img.classList.add("hidden"); document.getElementById("primingStatus").textContent = ""; await new Promise(r => setTimeout(r, 200));
-
-    img.src = "./stim/" + trial.target_pic;
-    img.classList.remove("hidden"); document.getElementById("primingStatus").textContent = "말하세요!";
-    
-    const targetData = await record(3000);
-    if (targetData.onset === null) {
-      timeoutCount++;
-      if (timeoutCount >= FAIL_LIMIT) { alert("무응답 누적으로 종료합니다."); return location.reload(); }
-    }
-
-    // 업로드 및 시행 데이터 기록 (listNum 포함)
+    // 시행 데이터 저장
     appendRow({
       event: "priming_trial", pid: session.pid, sessionId: session.sessionId,
-      listNum: listNumUsed, primeModeGroup: assignedGroup, trialIdx: i+1,
-      pair_id: trial.pair_id, onset: targetData.onset
+      listNum: listNumUsed, primeModeGroup: assignedGroup, trialIdx: i + 1,
+      pair_id: trial.pair_id, primeWord: trial.primeWord, targetWord: trial.targetWord,
+      onset_ms: recData.onset, timeout: isTimeout
     });
 
-    uploadAudioBlob(targetData.blob, {
-      pid: session.pid, sessionId: session.sessionId, folderId: session.folderId,
-      filename: `${session.pid}_T${i}_target.webm`, trialId: trial.pair_id, phase: "priming"
-    }).catch(() => uploadFailCount++);
-
-    img.classList.add("hidden"); document.getElementById("primingStatus").textContent = ""; await new Promise(r => setTimeout(r, 800));
-  }
-  showScreen("contact");
-}
-
-/* Helpers */
-function parseCSV(t) { const l = t.trim().split("\n"); const h = l[0].split(",").map(x=>x.trim()); return l.slice(1).map(row => { const v = row.split(",").map(x=>x.trim()); return h.reduce((o, k, i) => ({...o, [k]: v[i]}), {}); }); }
-async function record(ms) {
-  const chunks = []; const rec = new MediaRecorder(window.micStream); rec.ondataavailable = e => chunks.push(e.data); rec.start();
-  const startTime = performance.now();
-  const onset = await new Promise(resolve => {
-    function check() {
-      const buf = new Uint8Array(window.analyser.fftSize); window.analyser.getByteTimeDomainData(buf);
-      let sum = 0; for(let i=0; i<buf.length; i++) { const v = (buf[i]-128)/128; sum += v*v; }
-      if (Math.sqrt(sum/buf.length) > 0.02) resolve(Math.round(performance.now() - startTime));
-      else if (performance.now() - startTime > ms) resolve(null);
-      else requestAnimationFrame(check);
+    if (timeoutCount >= FAIL_LIMIT) { 
+      alert("무응답 누적으로 종료합니다."); 
+      location.reload(); return; 
     }
-    check();
-  });
-  await new Promise(r => setTimeout(r, Math.max(0, ms - (performance.now() - startTime))));
-  rec.stop(); return new Promise(r => rec.onstop = () => r({onset, blob: new Blob(chunks, {type:"audio/webm"})}));
-}
-function startMicMonitoring() {
-  function update() {
-    if (screens.priming.classList.contains("hidden")) return;
-    const buf = new Uint8Array(window.analyser.fftSize); window.analyser.getByteTimeDomainData(buf);
-    let sum = 0; for(let i=0; i<buf.length; i++) { const v = (buf[i]-128)/128; sum += v*v; }
-    document.getElementById("liveMicFill").style.width = Math.min(100, Math.sqrt(sum/buf.length)*800) + "%";
-    requestAnimationFrame(update);
+
+    // 오디오 파일 업로드
+    uploadAudioBlob(recData.blob, { 
+      pid: session.pid, sessionId: session.sessionId, folderId: session.folderId, 
+      filename: `${session.pid}_T${i}_target.webm`, trialId: trial.pair_id, phase: "priming" 
+    }).catch(() => uploadFailCount++);
+    
+    // ... (ITI 로직)
   }
-  update();
 }
-document.getElementById("btnSubmitContact").onclick = async () => { 
-  await jsonp({ action: "appendContact", contact_json: JSON.stringify({ pid: session.pid, contact_value: document.getElementById("contactValue").value }) });
-  alert("완료되었습니다."); location.href="about:blank"; 
-};
+// ... (이하 생략)
 </script>
-</body>
-</html>
