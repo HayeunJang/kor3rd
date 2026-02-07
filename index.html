@@ -1,98 +1,532 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Experiment</title>
+  <style>
+    html, body { height: 100%; font-family: system-ui, sans-serif; margin: 0; background: #fff; display: flex; justify-content: center; align-items: flex-start; padding: 24px; box-sizing: border-box; }
+    .card { width: min(760px, 100%); border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 0 0 24px 0; }
+    .hidden { display: none !important; }
+    #afcChoices { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    #afcChoices button { width:100%; padding: 12px; font-size: 16px; cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
+    label { display:block; margin: 10px 0 6px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
+    button { padding: 10px 14px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .note { font-size: 14px; color:#444; line-height: 1.6; }
+    #experimentHeader { width: 100%; margin-bottom: 20px; }
+    .progress-container { width: 100%; background: #eee; border-radius: 5px; height: 10px; overflow: hidden; }
+    #mainProgressBar { width: 0%; height: 100%; background: #4CAF50; transition: width 0.3s; }
+    .mic-gauge-container { width: 200px; height: 8px; background: #ddd; border-radius: 4px; margin: 10px auto; overflow: hidden; }
+    #liveMicFill { width: 0%; height: 100%; background: #2196F3; }
+  </style>
+</head>
+<body>
+
+<div class="card" id="screen-consent">
+  <h1>연구 참여 동의</h1>
+  <p class="note">그림 학습 후 단어를 말하는 과제입니다. 잦은 무응답 시 실험이 자동 종료됩니다.</p>
+  <label><input type="checkbox" id="consentCheck"> 연구 참여에 동의합니다.</label>
+  <hr>
+  <h3>참가자 정보</h3>
+  <label>닉네임</label><input id="nick">
+  <label>생년월</label><input id="birthYM" type="month">
+  <label>성별</label>
+  <select id="gender"><option value="">선택</option><option value="male">남</option><option value="female">여</option></select>
+  <label>모국어</label><input id="nativeLang" value="한국어">
+  <label>외국어</label><input id="otherLangs">
+  <button id="btnStart" disabled>동의하고 시작</button>
+</div>
+
+<div class="card hidden" id="screen-ready">
+  <h2>준비 완료</h2><p>학습 단계를 시작합니다.</p><button id="btnContinue">계속</button>
+</div>
+
+<div class="card hidden" id="screen-study">
+  <h2>학습</h2>
+  <p class="note" id="studyProgress">그림과 단어를 기억하세요. (2회 반복)</p>
+  <div style="height:380px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div id="fixation" class="hidden" style="font-size:48px;">+</div>
+    <img id="studyImg" class="hidden" style="max-width:420px; max-height:320px;">
+    <div id="studyLabel" class="hidden" style="font-size:28px; margin-top:10px;"></div>
+  </div>
+  <button id="btnStartStudy">학습 시작</button>
+  <button id="btnNextAfterStudy" class="hidden">테스트 시작</button>
+</div>
+
+<div class="card hidden" id="screen-afc">
+  <h2>테스트</h2>
+  <div style="text-align:center;"><img id="afcImg" style="max-width:420px; max-height:320px;" /></div>
+  <div id="afcChoices"></div>
+</div>
+
+<div class="card hidden" id="screen-afc-result">
+  <h2>결과</h2>
+  <p id="afcResultText"></p>
+  <button id="btnAfcRemedial" class="hidden">오답 재학습</button>
+  <button id="btnAfcProceed" class="hidden">실험 진행</button>
+</div>
+
+<div class="card hidden" id="screen-mic">
+  <h2>마이크 확인</h2>
+  <progress id="micMeter" value="0" max="1" style="width:100%;"></progress>
+  <button id="btnMicStart">권한 확인</button>
+  <button id="btnMicNext" class="hidden">본 실험 시작</button>
+</div>
+
+<div class="card hidden" id="screen-priming">
+  <div id="experimentHeader">
+    <div class="progress-container"><div id="mainProgressBar"></div></div>
+    <p id="trialCounter" style="text-align:right; font-size:12px;">0/108</p>
+  </div>
+  <div style="height:350px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <div id="primingFixation" class="hidden" style="font-size:48px;">+</div>
+    <img id="primingImg" class="hidden" style="max-width:420px; max-height:320px;">
+  </div>
+  <div class="mic-monitor"><div class="mic-gauge-container"><div id="liveMicFill"></div></div></div>
+  <p id="primingStatus" style="text-align:center; font-weight:bold; font-size:24px; color:#d32f2f; min-height:1.2em;"></p>
+  <div id="animacyButtons" class="hidden" style="display:flex; gap:10px; justify-content:center;">
+    <button id="btnAnimate">생물</button><button id="btnInanimate">무생물</button>
+  </div>
+</div>
+
+<div class="card hidden" id="screen-contact">
+  <h2>종료</h2>
+  <input id="contactValue" placeholder="연락처">
+  <button id="btnSubmitContact">제출</button>
+</div>
+
 <script type="module">
 import { jsonp, createSession, appendRow, uploadAudioBlob } from "./js/api.js";
 
-/* 글로벌 상태 */
-let session = null, assignedGroup = null, STUDY_ITEMS = [], PRIMING_TRIALS = [];
-let timeoutCount = 0, uploadFailCount = 0, listNumUsed = 0;
-let afcIdx = 0, afcScore = 0, afcResponses = [], afcWrongItems = [], isRemedial = false;
-const FAIL_LIMIT = 10, TOTAL_PRIMING = 108, AFC_THRESHOLD = 0.9;
+/* 핵심 상태 변수 */
+let session = null;
+let assignedGroup = null;
+let STUDY_ITEMS = [];
+let PRIMING_TRIALS = [];
+let timeoutCount = 0;
+let uploadFailCount = 0;
+let listNumUsed = 0;
 
-/* 1. 세션 시작 및 정보 저장 */
-document.getElementById("btnStart").onclick = async () => {
-  listNumUsed = Math.floor(Math.random() * 3) + 1;
-  const [itemsData, pairsData] = await Promise.all([
-    fetch("./stim/items.csv").then(r => r.text()).then(parseCSV),
-    fetch(`./stim/pairs_list_${listNumUsed}.csv`).then(r => r.text()).then(parseCSV)
-  ]);
+// AFC 관련 변수
+let afcIdx = 0;
+let afcScore = 0;
+let afcWrongItems = [];
+let afcCurrentList = []; // ★ 버그 수정: 전역으로 현재 테스트 리스트 관리
+let isRemedial = false;
 
-  const usedIds = new Set();
-  pairsData.forEach(p => { usedIds.add(p.primeId); usedIds.add(p.targetId); });
-  STUDY_ITEMS = itemsData.filter(i => usedIds.has(i.itemId)).map(i => ({...i, img: "./stim/"+i.img}));
-  PRIMING_TRIALS = pairsData;
-  assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
-  
-  // 참가자 상세 정보 객체
-  const participant = { 
-    nick: document.getElementById("nick").value, 
-    birthYM: document.getElementById("birthYM").value, 
-    gender: document.getElementById("gender").value,
-    nativeLang: document.getElementById("nativeLang").value,
-    otherLangs: document.getElementById("otherLangs").value
-  };
+const FAIL_LIMIT = 10;
+const TOTAL_PRIMING = 108;
+const AFC_THRESHOLD = 0.9;
 
-  // session_start 이벤트와 함께 모든 정보 저장
-  session = await createSession(participant.nick + "_" + Date.now(), { 
-    primeModeGroup: assignedGroup, 
-    listNum: listNumUsed,
-    participant: participant 
-  });
-  
-  showScreen("ready");
+/* 유틸리티 */
+const showScreen = (s) => { 
+  document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); 
+  document.getElementById('screen-'+s).classList.remove('hidden'); 
 };
 
-/* 2. 4AFC 테스트 결과 저장 추가 */
-async function runNextAFC(list, phase) {
-  if (afcIdx >= list.length) return finishAFC(phase);
-  const item = list[afcIdx];
-  // ... (UI 로직)
-  btn.onclick = async () => { 
-    const isCorrect = (c.itemId === item.itemId);
-    if(isCorrect) afcScore++; else afcWrongItems.push(item);
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+const parseCSV = (t) => { 
+  const lines = t.trim().split("\n"); 
+  const headers = lines[0].split(",").map(x => x.trim());
+  return lines.slice(1).map(row => {
+    const values = row.split(",").map(x => x.trim());
+    return headers.reduce((o, k, i) => ({...o, [k]: values[i]}), {});
+  });
+};
+
+/* 1. 실험 시작 (정보 저장 포함) */
+document.getElementById("consentCheck").addEventListener("change", (e) => {
+  document.getElementById("btnStart").disabled = !e.target.checked;
+});
+
+document.getElementById("btnStart").addEventListener("click", async () => {
+  try {
+    listNumUsed = Math.floor(Math.random() * 3) + 1;
     
-    // 각 4AFC 시행 데이터 저장
-    appendRow({
-      event: "afc_trial", pid: session.pid, sessionId: session.sessionId,
-      phase: phase, trialIdx: afcIdx + 1, targetId: item.itemId,
-      response: c.word, correct: isCorrect
+    const [itemsData, pairsData] = await Promise.all([
+      fetch("./stim/items.csv").then(r => {
+        if (!r.ok) throw new Error("items.csv 로드 실패");
+        return r.text();
+      }).then(parseCSV),
+      fetch(`./stim/pairs_list_${listNumUsed}.csv`).then(r => {
+        if (!r.ok) throw new Error(`pairs_list_${listNumUsed}.csv 로드 실패`);
+        return r.text();
+      }).then(parseCSV)
+    ]);
+
+    const usedIds = new Set();
+    pairsData.forEach(p => { 
+      usedIds.add(p.primeId); 
+      usedIds.add(p.targetId); 
     });
     
-    afcIdx++; runNextAFC(list, phase); 
-  };
+    STUDY_ITEMS = itemsData
+      .filter(i => usedIds.has(i.itemId))
+      .map(i => ({...i, img: "./stim/"+i.img}));
+    
+    PRIMING_TRIALS = pairsData;
+    assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
+    
+    const participant = {
+      nick: document.getElementById("nick").value || "anonymous",
+      birthYM: document.getElementById("birthYM").value,
+      gender: document.getElementById("gender").value,
+      nativeLang: document.getElementById("nativeLang").value,
+      otherLangs: document.getElementById("otherLangs").value
+    };
+
+    // 세션 생성 및 참가자 정보 서버 저장
+    session = await createSession(participant.nick + "_" + Date.now(), { 
+      primeModeGroup: assignedGroup, 
+      listNum: listNumUsed, 
+      participant 
+    });
+    
+    console.log("✅ 세션 생성 완료:", session);
+    showScreen("ready");
+  } catch (err) {
+    console.error("❌ 초기화 에러:", err);
+    alert("실험 로드 중 오류 발생: " + err.message);
+  }
+});
+
+/* 2. 학습 단계 로직 */
+document.getElementById("btnContinue").onclick = () => showScreen("study");
+
+document.getElementById("btnStartStudy").onclick = async () => {
+  document.getElementById("btnStartStudy").classList.add("hidden");
+  
+  for (let pass = 1; pass <= 2; pass++) {
+    const shuffled = [...STUDY_ITEMS].sort(() => Math.random() - 0.5);
+    
+    for (let i = 0; i < shuffled.length; i++) {
+      document.getElementById("studyProgress").textContent = 
+        `학습 ${pass}/2회 - ${i+1}/${shuffled.length}`;
+      
+      // Fixation
+      document.getElementById("fixation").classList.remove("hidden");
+      await sleep(200);
+      document.getElementById("fixation").classList.add("hidden");
+      
+      // 이미지 + 단어
+      document.getElementById("studyImg").src = shuffled[i].img;
+      document.getElementById("studyImg").classList.remove("hidden");
+      document.getElementById("studyLabel").textContent = shuffled[i].word;
+      document.getElementById("studyLabel").classList.remove("hidden");
+      await sleep(800);
+      
+      // 숨기기
+      document.getElementById("studyImg").classList.add("hidden");
+      document.getElementById("studyLabel").classList.add("hidden");
+    }
+  }
+  
+  document.getElementById("btnNextAfterStudy").classList.remove("hidden");
+};
+
+/* 3. 4AFC 테스트 로직 - ★ 버그 수정 */
+document.getElementById("btnNextAfterStudy").onclick = () => startAFC(STUDY_ITEMS);
+
+function startAFC(itemsToTest) {
+  // ★ 수정: 파라미터로 받은 리스트를 실제로 사용
+  afcCurrentList = [...itemsToTest].sort(() => Math.random() - 0.5);
+  afcIdx = 0;
+  afcScore = 0;
+  afcWrongItems = [];
+  
+  showScreen("afc");
+  runNextAFC();
 }
 
-/* 3. 본 실험 데이터 저장 (Onset 및 Timeout 포함) */
+function runNextAFC() {
+  if (afcIdx >= afcCurrentList.length) {
+    return finishAFC();
+  }
+  
+  const item = afcCurrentList[afcIdx];
+  document.getElementById("afcImg").src = item.img;
+  
+  // 정답 + 오답 3개 선택
+  const distractors = STUDY_ITEMS
+    .filter(i => i.itemId !== item.itemId)
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 3);
+  
+  const choices = [item, ...distractors].sort(() => Math.random() - 0.5);
+  
+  const container = document.getElementById("afcChoices");
+  container.innerHTML = "";
+  
+  choices.forEach(c => {
+    const b = document.createElement("button");
+    b.textContent = c.word;
+    b.onclick = () => {
+      if (c.itemId === item.itemId) {
+        afcScore++;
+      } else {
+        afcWrongItems.push(item);
+      }
+      afcIdx++;
+      runNextAFC();
+    };
+    container.appendChild(b);
+  });
+}
+
+function finishAFC() {
+  const acc = afcScore / afcCurrentList.length;
+  const passed = acc >= AFC_THRESHOLD;
+  
+  showScreen("afc-result");
+  document.getElementById("afcResultText").innerHTML = 
+    `정답률: ${Math.round(acc*100)}% (${afcScore}/${afcCurrentList.length})<br>${passed ? "✅ 통과" : "❌ 미달"}`;
+  
+  // 버튼 초기화
+  document.getElementById("btnAfcRemedial").classList.add("hidden");
+  document.getElementById("btnAfcProceed").classList.add("hidden");
+  
+  if (passed) {
+    document.getElementById("btnAfcProceed").classList.remove("hidden");
+  } else {
+    if (!isRemedial && afcWrongItems.length > 0) {
+      // 첫 실패: 재학습 기회 제공
+      document.getElementById("btnAfcRemedial").classList.remove("hidden");
+    } else {
+      // 재학습 후에도 실패 또는 오답이 없는 경우
+      alert("테스트를 통과하지 못했습니다. 페이지를 새로고침합니다.");
+      setTimeout(() => location.reload(), 2000);
+    }
+  }
+}
+
+document.getElementById("btnAfcRemedial").onclick = () => {
+  isRemedial = true;
+  startAFC(afcWrongItems);
+};
+
+document.getElementById("btnAfcProceed").onclick = () => showScreen("mic");
+
+/* 4. 마이크 확인 */
+document.getElementById("btnMicStart").onclick = async () => {
+  try {
+    window.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    window.analyser = audioCtx.createAnalyser();
+    window.analyser.fftSize = 2048; // ★ 명시적으로 설정
+    audioCtx.createMediaStreamSource(window.micStream).connect(window.analyser);
+    
+    document.getElementById("btnMicStart").classList.add("hidden");
+    document.getElementById("btnMicNext").classList.remove("hidden");
+    console.log("✅ 마이크 권한 획득");
+  } catch (err) {
+    console.error("❌ 마이크 에러:", err);
+    alert("마이크 권한을 허용해주세요.");
+  }
+};
+
+document.getElementById("btnMicNext").onclick = () => {
+  showScreen("priming");
+  runPriming();
+  startMicMonitoring();
+};
+
+/* 5. 녹음 함수 - ★ 개선 */
+async function record(ms) {
+  const chunks = [];
+  const rec = new MediaRecorder(window.micStream);
+  
+  rec.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+  
+  rec.start();
+  const start = performance.now();
+  
+  // Voice onset detection
+  const onset = await new Promise(resolve => {
+    function check() {
+      const buf = new Uint8Array(window.analyser.fftSize);
+      window.analyser.getByteTimeDomainData(buf);
+      
+      let sum = 0;
+      for(let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+      }
+      
+      const rms = Math.sqrt(sum / buf.length);
+      const elapsed = performance.now() - start;
+      
+      if (rms > 0.02) {
+        // ★ 음성 감지
+        resolve(Math.round(elapsed));
+      } else if (elapsed > ms) {
+        // ★ 타임아웃
+        resolve(null);
+      } else {
+        requestAnimationFrame(check);
+      }
+    }
+    check();
+  });
+  
+  // 나머지 시간 대기
+  await sleep(Math.max(0, ms - (performance.now() - start)));
+  rec.stop();
+  
+  return new Promise(r => {
+    rec.onstop = () => {
+      const blob = new Blob(chunks, {type: "audio/webm"});
+      r({onset, blob});
+    };
+  });
+}
+
+/* 6. 본 실험 진행 */
 async function runPriming() {
   for (let i = 0; i < PRIMING_TRIALS.length; i++) {
     const trial = PRIMING_TRIALS[i];
-    // ... (자극 제시 로직)
-
-    const recData = await record(3000);
     
-    // 무응답 여부 체크 및 카운트
-    const isTimeout = (recData.onset === null);
-    if (isTimeout) timeoutCount++;
-
-    // 시행 데이터 저장
-    appendRow({
-      event: "priming_trial", pid: session.pid, sessionId: session.sessionId,
-      listNum: listNumUsed, primeModeGroup: assignedGroup, trialIdx: i + 1,
-      pair_id: trial.pair_id, primeWord: trial.primeWord, targetWord: trial.targetWord,
-      onset_ms: recData.onset, timeout: isTimeout
-    });
-
-    if (timeoutCount >= FAIL_LIMIT) { 
-      alert("무응답 누적으로 종료합니다."); 
-      location.reload(); return; 
+    // 진행률 업데이트
+    document.getElementById("mainProgressBar").style.width = 
+      ((i + 1) / TOTAL_PRIMING * 100) + "%";
+    document.getElementById("trialCounter").textContent = 
+      `${i + 1} / ${TOTAL_PRIMING}`;
+    
+    // Fixation
+    document.getElementById("primingFixation").classList.remove("hidden");
+    await sleep(300);
+    document.getElementById("primingFixation").classList.add("hidden");
+    
+    const img = document.getElementById("primingImg");
+    img.src = "./stim/" + trial.prime_pic;
+    img.classList.remove("hidden");
+    
+    // Prime 조건별 처리
+    if (assignedGroup === "overt") {
+      document.getElementById("primingStatus").textContent = "말하세요";
+      await record(3000);
+    } else if (assignedGroup === "nonaming") {
+      document.getElementById("primingStatus").textContent = "생물?";
+      document.getElementById("animacyButtons").classList.remove("hidden");
+      
+      await new Promise(r => {
+        const cleanup = () => {
+          document.getElementById("animacyButtons").classList.add("hidden");
+          r();
+        };
+        document.getElementById("btnAnimate").onclick = cleanup;
+        document.getElementById("btnInanimate").onclick = cleanup;
+      });
+    } else {
+      // covert
+      document.getElementById("primingStatus").textContent = "보세요";
+      await sleep(2000);
     }
-
-    // 오디오 파일 업로드
-    uploadAudioBlob(recData.blob, { 
-      pid: session.pid, sessionId: session.sessionId, folderId: session.folderId, 
-      filename: `${session.pid}_T${i}_target.webm`, trialId: trial.pair_id, phase: "priming" 
-    }).catch(() => uploadFailCount++);
     
-    // ... (ITI 로직)
+    img.classList.add("hidden");
+    document.getElementById("primingStatus").textContent = "";
+    await sleep(200);
+    
+    // Target 제시 및 녹음
+    img.src = "./stim/" + trial.target_pic;
+    img.classList.remove("hidden");
+    document.getElementById("primingStatus").textContent = "빨리 말하세요!";
+    
+    const rec = await record(3000);
+    
+    // ★ 타임아웃 체크
+    if (rec.onset === null) {
+      timeoutCount++;
+      console.warn(`⚠️ 타임아웃 발생 (${timeoutCount}/${FAIL_LIMIT})`);
+      
+      if (timeoutCount >= FAIL_LIMIT) {
+        alert("무응답이 누적되어 실험을 종료합니다.");
+        return location.reload();
+      }
+    }
+    
+    // 데이터 저장
+    try {
+      await appendRow({
+        event: "trial",
+        pid: session.pid,
+        listNum: listNumUsed,
+        group: assignedGroup,
+        trialIdx: i + 1,
+        onset: rec.onset,
+        trialId: trial.pair_id
+      });
+      
+      // ★ 오디오 업로드 (비동기로 처리하되 실패 카운트)
+      uploadAudioBlob(rec.blob, {
+        pid: session.pid,
+        sessionId: session.sessionId,
+        folderId: session.folderId,
+        filename: `${session.pid}_T${i + 1}.webm`,
+        trialId: trial.pair_id
+      }).catch(err => {
+        uploadFailCount++;
+        console.error(`❌ 오디오 업로드 실패 (${uploadFailCount}):`, err);
+      });
+      
+    } catch (err) {
+      console.error("❌ 데이터 저장 에러:", err);
+    }
+    
+    img.classList.add("hidden");
+    document.getElementById("primingStatus").textContent = "";
+    await sleep(800);
   }
+  
+  console.log(`✅ 실험 완료 (업로드 실패: ${uploadFailCount})`);
+  showScreen("contact");
 }
-// ... (이하 생략)
+
+/* 7. 마이크 모니터링 */
+function startMicMonitoring() {
+  function update() {
+    if (document.getElementById("screen-priming").classList.contains("hidden")) {
+      return;
+    }
+    
+    const buf = new Uint8Array(window.analyser.fftSize);
+    window.analyser.getByteTimeDomainData(buf);
+    
+    let sum = 0;
+    for(let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    
+    const level = Math.min(100, Math.sqrt(sum / buf.length) * 800);
+    document.getElementById("liveMicFill").style.width = level + "%";
+    
+    requestAnimationFrame(update);
+  }
+  update();
+}
+
+/* 8. 종료 */
+document.getElementById("btnSubmitContact").onclick = async () => {
+  try {
+    await jsonp({
+      action: "appendContact",
+      contact_json: JSON.stringify({
+        pid: session.pid,
+        contact_value: document.getElementById("contactValue").value
+      })
+    });
+    alert("완료되었습니다!");
+    location.href = "about:blank";
+  } catch (err) {
+    console.error("❌ 연락처 저장 에러:", err);
+    alert("저장 중 오류가 발생했습니다.");
+  }
+};
 </script>
+</body>
+</html>
