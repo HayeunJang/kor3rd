@@ -70,7 +70,10 @@
 
 <div class="card hidden" id="screen-mic">
   <h2>마이크 확인</h2>
-  <progress id="micMeter" value="0" max="1" style="width:100%;"></progress>
+  <p class="note">마이크에 대고 "아" 하고 말해보세요. 초록색 바가 움직이면 정상입니다.</p>
+  <div class="mic-gauge-container" style="width:100%; height:30px; margin:20px 0;">
+    <div id="testMicFill" style="height:100%; width:0%; background:#4CAF50; transition: width 0.1s;"></div>
+  </div>
   <button id="btnMicStart">권한 확인</button>
   <button id="btnMicNext" class="hidden">본 실험 시작</button>
 </div>
@@ -211,9 +214,12 @@ document.getElementById("btnStartStudy").onclick = async () => {
       await sleep(200);
       document.getElementById("fixation").classList.add("hidden");
       
-      // 이미지 + 단어
+      // ★ 1단계: 그림만 먼저 (500ms)
       document.getElementById("studyImg").src = shuffled[i].img;
       document.getElementById("studyImg").classList.remove("hidden");
+      await sleep(500);
+      
+      // ★ 2단계: 그림 + 단어 (800ms)
       document.getElementById("studyLabel").textContent = shuffled[i].word;
       document.getElementById("studyLabel").classList.remove("hidden");
       await sleep(800);
@@ -295,9 +301,9 @@ function finishAFC() {
       // 첫 실패: 재학습 기회 제공
       document.getElementById("btnAfcRemedial").classList.remove("hidden");
     } else {
-      // 재학습 후에도 실패 또는 오답이 없는 경우
-      alert("테스트를 통과하지 못했습니다. 페이지를 새로고침합니다.");
-      setTimeout(() => location.reload(), 2000);
+      // ★ 재학습 후에도 실패: 실험 종료
+      document.getElementById("afcResultText").innerHTML += 
+        "<br><br><strong style='color:#d32f2f;'>테스트를 통과하지 못했습니다.<br>실험이 종료되었습니다. 창을 닫아주세요.</strong>";
     }
   }
 }
@@ -321,16 +327,52 @@ document.getElementById("btnMicStart").onclick = async () => {
     document.getElementById("btnMicStart").classList.add("hidden");
     document.getElementById("btnMicNext").classList.remove("hidden");
     console.log("✅ 마이크 권한 획득");
+    
+    // ★ 마이크 테스트 모니터링 시작
+    startMicTestMonitoring();
   } catch (err) {
     console.error("❌ 마이크 에러:", err);
     alert("마이크 권한을 허용해주세요.");
   }
 };
 
+// ★ 마이크 테스트용 모니터링
+function startMicTestMonitoring() {
+  function update() {
+    if (document.getElementById("screen-mic").classList.contains("hidden")) {
+      return;
+    }
+    
+    const buf = new Uint8Array(window.analyser.fftSize);
+    window.analyser.getByteTimeDomainData(buf);
+    
+    let sum = 0;
+    for(let i = 0; i < buf.length; i++) {
+      const v = (buf[i] - 128) / 128;
+      sum += v * v;
+    }
+    
+    const level = Math.min(100, Math.sqrt(sum / buf.length) * 800);
+    document.getElementById("testMicFill").style.width = level + "%";
+    
+    requestAnimationFrame(update);
+  }
+  update();
+}
+
 document.getElementById("btnMicNext").onclick = () => {
-  showScreen("priming");
-  runPriming();
-  startMicMonitoring();
+  // ★ 본 실험 시작 전 안내
+  const instructions = assignedGroup === "overt" 
+    ? "이제 본 실험을 시작합니다.\n\n그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요."
+    : assignedGroup === "nonaming"
+    ? "이제 본 실험을 시작합니다.\n\n첫 번째 그림은 생물인지 무생물인지 판단하고,\n두 번째 그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요."
+    : "이제 본 실험을 시작합니다.\n\n첫 번째 그림을 잘 보시고,\n두 번째 그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요.";
+  
+  if (confirm(instructions)) {
+    showScreen("priming");
+    runPriming();
+    startMicMonitoring();
+  }
 };
 
 /* 5. 녹음 함수 - ★ 개선 */
@@ -444,8 +486,14 @@ async function runPriming() {
       console.warn(`⚠️ 타임아웃 발생 (${timeoutCount}/${FAIL_LIMIT})`);
       
       if (timeoutCount >= FAIL_LIMIT) {
-        alert("무응답이 누적되어 실험을 종료합니다.");
-        return location.reload();
+        img.classList.add("hidden");
+        document.getElementById("primingStatus").textContent = "";
+        alert("무응답이 누적되어 실험이 종료되었습니다.\n창을 닫아주세요.");
+        // ★ 새로고침하지 않고 종료 화면으로
+        showScreen("contact");
+        document.getElementById("contactValue").placeholder = "실험이 중단되었습니다";
+        document.getElementById("btnSubmitContact").disabled = true;
+        return;
       }
     }
     
@@ -458,6 +506,7 @@ async function runPriming() {
         group: assignedGroup,
         trialIdx: i + 1,
         onset: rec.onset,
+        timeout: rec.onset === null, // ★ timeout 정보 추가
         trialId: trial.pair_id
       });
       
