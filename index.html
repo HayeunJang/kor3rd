@@ -9,15 +9,12 @@
     .card { width: min(760px, 100%); border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 0 0 24px 0; }
     .hidden { display: none !important; }
     #afcChoices { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
-    #afcChoices button { width:100%; padding: 12px; font-size: 16px; }
+    #afcChoices button { width:100%; padding: 12px; font-size: 16px; cursor: pointer; }
     label { display:block; margin: 10px 0 6px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; font-size: 16px; margin-bottom: 10px; }
-    button { padding: 10px 14px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; }
+    input, select { width: 100%; padding: 8px; font-size: 16px; margin-bottom: 10px; box-sizing: border-box; }
+    button { padding: 10px 14px; font-size: 16px; cursor: pointer; border-radius: 6px; border: 1px solid #ccc; background: #fff; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .note { font-size: 14px; color:#444; line-height: 1.6; }
-    .study-instruction { font-size: 16px; color: #000; }
-    
-    /* 추가된 UI 요소 */
     #experimentHeader { width: 100%; margin-bottom: 20px; }
     .progress-container { width: 100%; background: #eee; border-radius: 5px; height: 10px; overflow: hidden; }
     #mainProgressBar { width: 0%; height: 100%; background: #4CAF50; transition: width 0.3s; }
@@ -31,10 +28,7 @@
 <div class="card" id="screen-consent">
   <h1 style="margin-top:0;">실험 참여</h1>
   <h2>연구 참여 동의</h2>
-  <p class="note">
-    본 실험은 그림 학습, 4지선다 테스트, 그리고 본 실험(그림 보고 말하기)으로 구성됩니다.<br>
-    음성 녹음을 위해 마이크 세팅을 확인해주세요. 잦은 무응답 시 실험이 자동 종료될 수 있습니다.
-  </p>
+  <p class="note">본 실험은 그림 학습, 테스트, 본 실험으로 구성됩니다. 모든 응답과 정보는 연구 목적으로만 사용됩니다.</p>
   <label><input type="checkbox" id="consentCheck"> 연구 참여에 동의합니다.</label>
   <hr>
   <h3>참가자 정보</h3>
@@ -48,16 +42,12 @@
 </div>
 
 <div class="card hidden" id="screen-ready">
-  <h2>준비 완료</h2>
-  <p>이제부터 학습 단계를 시작합니다.</p>
-  <button id="btnContinue">계속</button>
+  <h2>준비 완료</h2><p>이제부터 학습 단계를 시작합니다.</p><button id="btnContinue">계속</button>
 </div>
 
 <div class="card hidden" id="screen-study">
   <h2>학습</h2>
-  <p class="note study-instruction" id="studyProgress">
-    그림과 단어를 잘 보고 기억해 주세요. 학습은 2회 반복됩니다.
-  </p>
+  <p class="note" id="studyProgress">그림과 단어를 잘 보고 기억해 주세요. (2회 반복)</p>
   <div style="height:380px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
     <div id="fixation" class="hidden" style="font-size:48px;">+</div>
     <img id="studyImg" class="hidden" style="max-width:420px; max-height:320px;">
@@ -74,21 +64,20 @@
   <div style="text-align:center;"><img id="afcImg" style="max-width:420px; max-height:320px;" /></div>
   <div id="afcChoices"></div>
   <p class="note" id="afcTimer" style="text-align:center;"></p>
-  <button id="btnNextAFC" class="hidden">다음</button>
 </div>
 
 <div class="card hidden" id="screen-afc-result">
-  <h2>확인 테스트 결과</h2>
+  <h2>테스트 결과</h2>
   <p id="afcResultText"></p>
-  <div id="afcResultButtons" style="margin-top:16px; text-align:center;">
-    <button id="btnAfcRemedial" class="hidden">오답만 다시 학습하고 재시험</button>
-    <button id="btnAfcProceed" class="hidden">다음 단계로 진행</button>
+  <div style="margin-top:16px; text-align:center;">
+    <button id="btnAfcRemedial" class="hidden">오답 다시 학습 후 재시험</button>
+    <button id="btnAfcProceed" class="hidden">본 실험 진행</button>
   </div>
 </div>
 
 <div class="card hidden" id="screen-mic">
   <h2>마이크 확인</h2>
-  <p class="note" id="micText"></p>
+  <p class="note" id="micText">준비가 되면 버튼을 눌러주세요.</p>
   <progress id="micMeter" value="0" max="1" style="width:100%; height:18px;"></progress>
   <div style="margin-top:16px; text-align:center;">
     <button id="btnMicStart">마이크 권한 확인</button>
@@ -108,195 +97,114 @@
   <div class="mic-monitor">
     <div class="mic-gauge-container"><div id="liveMicFill"></div></div>
   </div>
-  <p id="primingStatus" style="text-align:center; font-weight:bold; font-size:22px; color:#d32f2f;"></p>
+  <p id="primingStatus" style="text-align:center; font-weight:bold; font-size:24px; color:#d32f2f; min-height:1.2em;"></p>
   <div id="animacyButtons" class="hidden" style="display:flex; gap:10px; justify-content:center;">
-    <button id="btnAnimate">생물</button>
-    <button id="btnInanimate">무생물</button>
+    <button id="btnAnimate">생물</button><button id="btnInanimate">무생물</button>
   </div>
 </div>
 
 <div class="card hidden" id="screen-contact">
   <h2>실험 종료</h2>
-  <label>보상용 휴대폰 번호</label>
-  <input id="contactValue" placeholder="010-1234-5678">
-  <button id="btnSubmitContact">제출하고 종료</button>
+  <label>연락처</label><input id="contactValue" placeholder="010-1234-5678">
+  <button id="btnSubmitContact">제출 및 종료</button>
 </div>
 
 <script type="module">
 import { jsonp, createSession, appendRow, uploadAudioBlob } from "./js/api.js";
 
-/* State & Config */
-let session = null;
-let assignedGroup = null;
-let STUDY_ITEMS = [];
-let PRIMING_TRIALS = [];
-let timeoutCount = 0;
-let uploadFailCount = 0;
-const FAIL_LIMIT = 10;
-const TOTAL_TRIALS_NUM = 108; // 18개 * 6조건
+/* State */
+let session = null, assignedGroup = null, STUDY_ITEMS = [], PRIMING_TRIALS = [];
+let timeoutCount = 0, uploadFailCount = 0, listNumUsed = 0;
+const FAIL_LIMIT = 10, TOTAL_PRIMING = 108, AFC_THRESHOLD = 0.9;
 
-/* UI Elements */
-const screens = {
-  consent: document.getElementById("screen-consent"),
-  ready: document.getElementById("screen-ready"),
-  study: document.getElementById("screen-study"),
-  afc: document.getElementById("screen-afc"),
-  afcResult: document.getElementById("screen-afc-result"),
-  mic: document.getElementById("screen-mic"),
-  priming: document.getElementById("screen-priming"),
-  contact: document.getElementById("screen-contact")
-};
+/* UI Helpers */
+const showScreen = (s) => { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); document.getElementById('screen-'+s).classList.remove('hidden'); };
+document.getElementById("consentCheck").onclick = (e) => { document.getElementById("btnStart").disabled = !e.target.checked; };
 
-/* Validation */
-function validateForm() {
-  const consent = document.getElementById("consentCheck").checked;
-  const nick = document.getElementById("nick").value.trim();
-  const birth = document.getElementById("birthYM").value;
-  const gender = document.getElementById("gender").value;
-  document.getElementById("btnStart").disabled = !(consent && nick && birth && gender);
-}
-["consentCheck", "nick", "birthYM", "gender"].forEach(id => {
-  document.getElementById(id).addEventListener("input", validateForm);
-  document.getElementById(id).addEventListener("change", validateForm);
-});
-
-/* CSV Loader */
-async function loadCSV(path) {
-  const res = await fetch(path);
-  const text = await res.text();
-  const lines = text.trim().split("\n");
-  const headers = lines[0].split(",").map(h => h.trim());
-  return lines.slice(1).map(line => {
-    const values = line.split(",").map(v => v.trim());
-    return headers.reduce((obj, h, i) => ({ ...obj, [h]: values[i] }), {});
-  });
-}
-
-/* Mic Monitoring */
-function startMicMonitoring() {
-  if (!window.analyser) return;
-  const dataArray = new Uint8Array(window.analyser.fftSize);
-  function update() {
-    if (screens.priming.classList.contains("hidden")) return;
-    window.analyser.getByteTimeDomainData(dataArray);
-    let sum = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-      const v = (dataArray[i] - 128) / 128;
-      sum += v * v;
-    }
-    const rms = Math.sqrt(sum / dataArray.length);
-    document.getElementById("liveMicFill").style.width = Math.min(100, rms * 800) + "%";
-    requestAnimationFrame(update);
-  }
-  update();
-}
-
-/* Recording (3s Fixed) */
-async function recordThreeSeconds() {
-  const chunks = [];
-  const recorder = new MediaRecorder(window.micStream);
-  recorder.ondataavailable = e => chunks.push(e.data);
-  recorder.start();
-  
-  // Timeout 및 Onset 감지
-  const onsetPromise = detectVoiceOnset(3000); 
-  await new Promise(r => setTimeout(r, 3000)); // 무조건 3초 녹음
-  
-  recorder.stop();
-  const onset = await onsetPromise;
-  const blob = await new Promise(r => {
-    recorder.onstop = () => r(new Blob(chunks, { type: "audio/webm" }));
-  });
-  return { onset, blob };
-}
-
-async function detectVoiceOnset(maxMs) {
-  const start = performance.now();
-  const dataArray = new Uint8Array(window.analyser.fftSize);
-  const threshold = 0.02; // 기본 임계치
-  return new Promise(resolve => {
-    function check() {
-      window.analyser.getByteTimeDomainData(dataArray);
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        const v = (dataArray[i] - 128) / 128;
-        sum += v * v;
-      }
-      if (Math.sqrt(sum / dataArray.length) > threshold) {
-        resolve(Math.round(performance.now() - start));
-      } else if (performance.now() - start > maxMs) {
-        resolve(null); // Timeout 발생
-      } else {
-        requestAnimationFrame(check);
-      }
-    }
-    check();
-  });
-}
-
-/* 1. Start Session */
+/* 1. Initialization */
 document.getElementById("btnStart").onclick = async () => {
-  const listNum = Math.floor(Math.random() * 3) + 1;
+  document.getElementById("btnStart").disabled = true;
+  listNumUsed = Math.floor(Math.random() * 3) + 1;
+  
   const [itemsData, pairsData] = await Promise.all([
-    loadCSV("./stim/items.csv"),
-    loadCSV(`./stim/pairs_list_${listNum}.csv`)
+    fetch("./stim/items.csv").then(r => r.text()).then(parseCSV),
+    fetch(`./stim/pairs_list_${listNumUsed}.csv`).then(r => r.text()).then(parseCSV)
   ]);
 
-  // STUDY_ITEMS 추출 (pairs에 사용된 모든 ID)
   const usedIds = new Set();
   pairsData.forEach(p => { usedIds.add(p.primeId); usedIds.add(p.targetId); });
   STUDY_ITEMS = itemsData.filter(i => usedIds.has(i.itemId)).map(i => ({...i, img: "./stim/"+i.img}));
   PRIMING_TRIALS = pairsData;
-
-  const groups = ["overt", "covert", "nonaming"];
-  assignedGroup = groups[Math.floor(Math.random() * groups.length)];
-
-  const pid = document.getElementById("nick").value + "_" + Date.now();
-  session = await createSession(pid, { primeModeGroup: assignedGroup });
+  assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
   
-  screens.consent.classList.add("hidden");
-  screens.ready.classList.remove("hidden");
+  const participant = {
+    nick: document.getElementById("nick").value.trim(),
+    birthYM: document.getElementById("birthYM").value,
+    gender: document.getElementById("gender").value,
+    nativeLang: document.getElementById("nativeLang").value.trim(),
+    otherLangs: document.getElementById("otherLangs").value.trim()
+  };
+
+  // 세션 생성 시 리스트 번호와 참가자 정보 포함
+  session = await createSession(participant.nick + "_" + Date.now(), { 
+    primeModeGroup: assignedGroup, 
+    listNum: listNumUsed,
+    participant 
+  });
+  
+  showScreen("ready");
 };
 
-/* 2. Study Phase */
-document.getElementById("btnContinue").onclick = () => {
-  screens.ready.classList.add("hidden");
-  screens.study.classList.remove("hidden");
-};
-
+/* 2. Study & 4AFC (원본 로직 유지) */
+document.getElementById("btnContinue").onclick = () => showScreen("study");
 document.getElementById("btnStartStudy").onclick = async () => {
   document.getElementById("btnStartStudy").classList.add("hidden");
   for (let pass = 1; pass <= 2; pass++) {
     const shuffled = [...STUDY_ITEMS].sort(() => Math.random() - 0.5);
     for (let i = 0; i < shuffled.length; i++) {
-      document.getElementById("studyProgress").textContent = `학습 중: ${pass}/2 회차 - ${i+1}/${shuffled.length}`;
+      document.getElementById("studyProgress").textContent = `학습 ${pass}/2회 - ${i+1}/${shuffled.length}`;
       document.getElementById("fixation").classList.remove("hidden");
       await new Promise(r => setTimeout(r, 200));
       document.getElementById("fixation").classList.add("hidden");
-      
       document.getElementById("studyImg").src = shuffled[i].img;
       document.getElementById("studyImg").classList.remove("hidden");
-      await new Promise(r => setTimeout(r, 500));
-      
       document.getElementById("studyLabel").textContent = shuffled[i].word;
       document.getElementById("studyLabel").classList.remove("hidden");
-      await new Promise(r => setTimeout(r, 500));
-      
+      await new Promise(r => setTimeout(r, 800));
       document.getElementById("studyImg").classList.add("hidden");
       document.getElementById("studyLabel").classList.add("hidden");
     }
   }
-  document.getElementById("studyProgress").textContent = "학습 완료!";
   document.getElementById("btnNextAfterStudy").classList.remove("hidden");
 };
 
-/* 3. Priming Phase (Main) */
-// (4AFC 로직은 원본과 동일하게 유지하되 화면 전환만 본 실험으로 연결)
-document.getElementById("btnNextAfterStudy").onclick = () => {
-  screens.study.classList.add("hidden");
-  screens.mic.classList.remove("hidden"); // 마이크 확인 후 본 실험 시작
-};
+document.getElementById("btnNextAfterStudy").onclick = () => startAFC(STUDY_ITEMS);
+let afcIdx = 0, afcScore = 0, afcList = [], isRemedial = false;
+function startAFC(list) { afcList = [...list].sort(() => Math.random() - 0.5); afcIdx = 0; afcScore = 0; showScreen("afc"); runNextAFC(); }
+function runNextAFC() {
+  if (afcIdx >= afcList.length) return finishAFC();
+  const item = afcList[afcIdx];
+  document.getElementById("afcImg").src = item.img;
+  const choices = [item, ...STUDY_ITEMS.filter(i => i.itemId !== item.itemId).sort(() => Math.random() - 0.5).slice(0, 3)].sort(() => Math.random() - 0.5);
+  const container = document.getElementById("afcChoices");
+  container.innerHTML = "";
+  choices.forEach(c => {
+    const b = document.createElement("button"); b.textContent = c.word;
+    b.onclick = () => { if (c.itemId === item.itemId) afcScore++; afcIdx++; runNextAFC(); };
+    container.appendChild(b);
+  });
+}
+function finishAFC() {
+  const acc = afcScore / afcList.length; const passed = acc >= AFC_THRESHOLD; showScreen("afcResult");
+  document.getElementById("afcResultText").innerHTML = `정답률: ${Math.round(acc*100)}% (${passed ? "통과" : "미달"})`;
+  if (passed) document.getElementById("btnAfcProceed").classList.remove("hidden");
+  else if (!isRemedial) { isRemedial = true; document.getElementById("btnAfcRemedial").classList.remove("hidden"); }
+  else { setTimeout(() => location.reload(), 3000); }
+}
+document.getElementById("btnAfcRemedial").onclick = () => startAFC(STUDY_ITEMS);
+document.getElementById("btnAfcProceed").onclick = () => showScreen("mic");
 
+/* 3. Mic & Priming (Main) */
 document.getElementById("btnMicStart").onclick = async () => {
   window.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -305,92 +213,92 @@ document.getElementById("btnMicStart").onclick = async () => {
   document.getElementById("btnMicStart").classList.add("hidden");
   document.getElementById("btnMicNext").classList.remove("hidden");
 };
+document.getElementById("btnMicNext").onclick = () => { showScreen("priming"); runPriming(); startMicMonitoring(); };
 
-document.getElementById("btnMicNext").onclick = async () => {
-  screens.mic.classList.add("hidden");
-  screens.priming.classList.remove("hidden");
-  startMicMonitoring();
-  runPrimingExperiment();
-};
-
-async function runPrimingExperiment() {
+async function runPriming() {
   for (let i = 0; i < PRIMING_TRIALS.length; i++) {
     const trial = PRIMING_TRIALS[i];
-    document.getElementById("mainProgressBar").style.width = ((i / TOTAL_TRIALS_NUM) * 100) + "%";
-    document.getElementById("trialCounter").textContent = `${i + 1} / ${TOTAL_TRIALS_NUM}`;
-
-    // Fixation
+    document.getElementById("mainProgressBar").style.width = ((i+1)/TOTAL_PRIMING*100) + "%";
+    document.getElementById("trialCounter").textContent = `${i+1} / ${TOTAL_PRIMING}`;
+    
     document.getElementById("primingFixation").classList.remove("hidden");
     await new Promise(r => setTimeout(r, 300));
     document.getElementById("primingFixation").classList.add("hidden");
 
-    // Prime
     const img = document.getElementById("primingImg");
     img.src = "./stim/" + trial.prime_pic;
     img.classList.remove("hidden");
-    
-    if (assignedGroup === "overt") {
-      document.getElementById("primingStatus").textContent = "말하세요";
-      await recordThreeSeconds();
-    } else if (assignedGroup === "nonaming") {
+
+    if (assignedGroup === "overt") { document.getElementById("primingStatus").textContent = "말하세요"; await record(3000); }
+    else if (assignedGroup === "nonaming") {
       document.getElementById("primingStatus").textContent = "생물?";
       document.getElementById("animacyButtons").classList.remove("hidden");
       await new Promise(r => {
-        document.getElementById("btnAnimate").onclick = r;
-        document.getElementById("btnInanimate").onclick = r;
+        document.getElementById("btnAnimate").onclick = () => { document.getElementById("animacyButtons").classList.add("hidden"); r(); };
+        document.getElementById("btnInanimate").onclick = () => { document.getElementById("animacyButtons").classList.add("hidden"); r(); };
       });
-      document.getElementById("animacyButtons").classList.add("hidden");
-    } else {
-      document.getElementById("primingStatus").textContent = "보세요";
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    img.classList.add("hidden");
-    await new Promise(r => setTimeout(r, 200));
+    } else { document.getElementById("primingStatus").textContent = "보세요"; await new Promise(r => setTimeout(r, 2000)); }
+    
+    img.classList.add("hidden"); document.getElementById("primingStatus").textContent = ""; await new Promise(r => setTimeout(r, 200));
 
-    // Target
     img.src = "./stim/" + trial.target_pic;
-    img.classList.remove("hidden");
-    document.getElementById("primingStatus").textContent = "빨리 말하세요!";
+    img.classList.remove("hidden"); document.getElementById("primingStatus").textContent = "말하세요!";
     
-    const targetData = await recordThreeSeconds();
-    
-    // Timeout Handling
+    const targetData = await record(3000);
     if (targetData.onset === null) {
       timeoutCount++;
-      if (timeoutCount >= FAIL_LIMIT) {
-        alert("잦은 무응답으로 실험을 종료합니다.");
-        location.reload();
-        return;
-      }
+      if (timeoutCount >= FAIL_LIMIT) { alert("무응답 누적으로 종료합니다."); return location.reload(); }
     }
 
-    // Upload
+    // 업로드 및 시행 데이터 기록 (listNum 포함)
+    appendRow({
+      event: "priming_trial", pid: session.pid, sessionId: session.sessionId,
+      listNum: listNumUsed, primeModeGroup: assignedGroup, trialIdx: i+1,
+      pair_id: trial.pair_id, onset: targetData.onset
+    });
+
     uploadAudioBlob(targetData.blob, {
       pid: session.pid, sessionId: session.sessionId, folderId: session.folderId,
       filename: `${session.pid}_T${i}_target.webm`, trialId: trial.pair_id, phase: "priming"
-    }).catch(() => {
-      uploadFailCount++;
-      if (uploadFailCount >= FAIL_LIMIT) { alert("서버 오류로 중단합니다."); location.reload(); }
-    });
+    }).catch(() => uploadFailCount++);
 
-    img.classList.add("hidden");
-    document.getElementById("primingStatus").textContent = "";
-    await new Promise(r => setTimeout(r, 800));
+    img.classList.add("hidden"); document.getElementById("primingStatus").textContent = ""; await new Promise(r => setTimeout(r, 800));
   }
-  screens.priming.classList.add("hidden");
-  screens.contact.classList.remove("hidden");
+  showScreen("contact");
 }
 
-/* Contact Submission */
-document.getElementById("btnSubmitContact").onclick = async () => {
-  await jsonp({
-    action: "appendContact",
-    contact_json: JSON.stringify({ pid: session.pid, contact_value: document.getElementById("contactValue").value })
+/* Helpers */
+function parseCSV(t) { const l = t.trim().split("\n"); const h = l[0].split(",").map(x=>x.trim()); return l.slice(1).map(row => { const v = row.split(",").map(x=>x.trim()); return h.reduce((o, k, i) => ({...o, [k]: v[i]}), {}); }); }
+async function record(ms) {
+  const chunks = []; const rec = new MediaRecorder(window.micStream); rec.ondataavailable = e => chunks.push(e.data); rec.start();
+  const startTime = performance.now();
+  const onset = await new Promise(resolve => {
+    function check() {
+      const buf = new Uint8Array(window.analyser.fftSize); window.analyser.getByteTimeDomainData(buf);
+      let sum = 0; for(let i=0; i<buf.length; i++) { const v = (buf[i]-128)/128; sum += v*v; }
+      if (Math.sqrt(sum/buf.length) > 0.02) resolve(Math.round(performance.now() - startTime));
+      else if (performance.now() - startTime > ms) resolve(null);
+      else requestAnimationFrame(check);
+    }
+    check();
   });
-  alert("완료되었습니다.");
-  location.href = "about:blank";
+  await new Promise(r => setTimeout(r, Math.max(0, ms - (performance.now() - startTime))));
+  rec.stop(); return new Promise(r => rec.onstop = () => r({onset, blob: new Blob(chunks, {type:"audio/webm"})}));
+}
+function startMicMonitoring() {
+  function update() {
+    if (screens.priming.classList.contains("hidden")) return;
+    const buf = new Uint8Array(window.analyser.fftSize); window.analyser.getByteTimeDomainData(buf);
+    let sum = 0; for(let i=0; i<buf.length; i++) { const v = (buf[i]-128)/128; sum += v*v; }
+    document.getElementById("liveMicFill").style.width = Math.min(100, Math.sqrt(sum/buf.length)*800) + "%";
+    requestAnimationFrame(update);
+  }
+  update();
+}
+document.getElementById("btnSubmitContact").onclick = async () => { 
+  await jsonp({ action: "appendContact", contact_json: JSON.stringify({ pid: session.pid, contact_value: document.getElementById("contactValue").value }) });
+  alert("완료되었습니다."); location.href="about:blank"; 
 };
-
 </script>
 </body>
 </html>
