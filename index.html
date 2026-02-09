@@ -497,7 +497,7 @@ async function runPriming() {
         alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
         // ★ 새로고침하지 않고 종료 화면으로
         showScreen("contact");
-        document.getElementById("contactValue").placeholder = "녹음 실패가 누적되어 실험이 종료되었습니다.";
+        document.getElementById("contactValue").placeholder = "녹음 실패 누적: 실험이 종료되었습니다.";
         document.getElementById("btnSubmitContact").disabled = true;
         return;
       }
@@ -582,6 +582,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
