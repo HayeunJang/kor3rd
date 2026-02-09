@@ -6,8 +6,9 @@
   <title>Experiment</title>
   <style>
     html, body { height: 100%; font-family: system-ui, sans-serif; margin: 0; background: #fff; display: flex; justify-content: center; align-items: flex-start; padding: 24px; box-sizing: border-box; }
-    .card { width: min(760px, 100%); border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 0 0 24px 0; }
+    .card { width: min(760px, 100%); border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 0 0 24px 0; font-weight: bold; font-size: 18px; }
     .hidden { display: none !important; }
+    #consentCheck { width: 20px; height: 20px; vertical-align: middle; margin-right: 8px; }
     #afcChoices { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
     #afcChoices button { width:100%; padding: 12px; font-size: 16px; cursor: pointer; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
     label { display:block; margin: 10px 0 6px; font-weight: bold; }
@@ -581,5 +582,6 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
