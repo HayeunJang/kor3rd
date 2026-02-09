@@ -26,7 +26,12 @@
 
 <div class="card" id="screen-consent">
   <h1>연구 참여 동의</h1>
-  <p class="note">그림 학습 후 단어를 말하는 과제입니다. 잦은 무응답 시 실험이 자동 종료됩니다.</p>
+  <p class="note">이 실험은 기본적으로 주어진 그림의 단어를 말하는 과제입니다.<br><br>
+    본 실험에 앞서 그림들의 이름을 2차례 반복해 학습한 후, 간단한 테스트를 거칩니다.<br>
+    테스트에 통과하시면 본 실험이 시작됩니다.<br><br>
+    본 실험에서는 두 그림이 제시됩니다.<br>
+    실험 유형에 따라 첫번째 그림에 대한 반응은 다를 수 있으나 두번째 그림은 언제나 소리를 내어 해당 이름을 말해주셔야 합니다.<br><br>
+    잦은 녹음 실패 시 실험이 자동 종료될 수 있다는 점을 미리 말씀드립니다.<br></p>
   <label><input type="checkbox" id="consentCheck"> 연구 참여에 동의합니다.</label>
   <hr>
   <h3>참가자 정보</h3>
@@ -36,7 +41,7 @@
   <select id="gender"><option value="">선택</option><option value="male">남</option><option value="female">여</option></select>
   <label>모국어</label><input id="nativeLang" value="한국어">
   <label>외국어</label><input id="otherLangs">
-  <button id="btnStart" disabled>동의하고 시작</button>
+  <button id="btnStart" disabled>동의하고 시작 (버튼을 누른 후 다음 화면까지 조금 기다려주세요)</button>
 </div>
 
 <div class="card hidden" id="screen-ready">
@@ -70,7 +75,7 @@
 
 <div class="card hidden" id="screen-mic">
   <h2>마이크 확인</h2>
-  <p class="note">마이크에 대고 "아" 하고 말해보세요. 초록색 바가 움직이면 정상입니다.</p>
+  <p class="note">권한 확인 후 마이크에 대고 "아" 하고 말해보세요. 초록색 바가 움직이면 정상입니다.</p>
   <div class="mic-gauge-container" style="width:100%; height:30px; margin:20px 0;">
     <div id="testMicFill" style="height:100%; width:0%; background:#4CAF50; transition: width 0.1s;"></div>
   </div>
@@ -363,10 +368,10 @@ function startMicTestMonitoring() {
 document.getElementById("btnMicNext").onclick = () => {
   // ★ 본 실험 시작 전 안내
   const instructions = assignedGroup === "overt" 
-    ? "이제 본 실험을 시작합니다.\n\n그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요."
+    ? "이제 본 실험을 시작합니다.\n그림이 나타나면 모든 그림에 대해 해당 단어를 최대한 빠르게 소리내서 말해주세요.\n\n잦은 녹음 실패 시 실험이 종료될 수 있습니다.\n실험을 완료하신 뒤 연락처 입력 후 종료하시면 일주일 내외로 사례가 전송됩니다.\n\n준비되셨으면 확인을 눌러주세요."
     : assignedGroup === "nonaming"
-    ? "이제 본 실험을 시작합니다.\n\n첫 번째 그림은 생물인지 무생물인지 판단하고,\n두 번째 그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요."
-    : "이제 본 실험을 시작합니다.\n\n첫 번째 그림을 잘 보시고,\n두 번째 그림이 나타나면 해당 단어를 빠르게 말해주세요.\n총 108번의 시행이 진행됩니다.\n\n준비되셨으면 확인을 눌러주세요.";
+    ? "이제 본 실험을 시작합니다.\n'+' 표시 후 첫 번째 그림은 생물인지 무생물인지 판단하고,\n두 번째 그림은 해당 단어를 최대한 빠르게 소리내서 말해주세요.\n\n잦은 녹음 실패 시 실험이 종료될 수 있습니다.\n실험을 완료하신 뒤 연락처 입력 후 종료하시면 일주일 내외로 사례가 전송됩니다.\n\n준비되셨으면 확인을 눌러주세요."
+    : "이제 본 실험을 시작합니다.\n'+' 표시 후 첫 번째 그림은 속으로 이름을 생각하고,\n두 번째 그림은 해당 단어를 최대한 빠르게 소리내서 말해주세요.\n\n잦은 녹음 실패 시 실험이 종료될 수 있습니다.\n실험을 완료하신 뒤 연락처 입력 후 종료하시면 일주일 내외로 사례가 전송됩니다.\n\n준비되셨으면 확인을 눌러주세요.";
   
   if (confirm(instructions)) {
     showScreen("priming");
@@ -449,10 +454,10 @@ async function runPriming() {
     
     // Prime 조건별 처리
     if (assignedGroup === "overt") {
-      document.getElementById("primingStatus").textContent = "말하세요";
+      document.getElementById("primingStatus").textContent = "그림에 해당하는 단어를 말하세요";
       await record(3000);
     } else if (assignedGroup === "nonaming") {
-      document.getElementById("primingStatus").textContent = "생물?";
+      document.getElementById("primingStatus").textContent = "생물? 무생물?";
       document.getElementById("animacyButtons").classList.remove("hidden");
       
       await new Promise(r => {
@@ -465,7 +470,7 @@ async function runPriming() {
       });
     } else {
       // covert
-      document.getElementById("primingStatus").textContent = "보세요";
+      document.getElementById("primingStatus").textContent = "그림에 해당하는 단어를 속으로 생각하세요";
       await sleep(2000);
     }
     
@@ -476,7 +481,7 @@ async function runPriming() {
     // Target 제시 및 녹음
     img.src = "./stim/" + trial.target_pic;
     img.classList.remove("hidden");
-    document.getElementById("primingStatus").textContent = "빨리 말하세요!";
+    document.getElementById("primingStatus").textContent = "그림에 해당하는 단어를 말하세요";
     
     const rec = await record(3000);
     
@@ -488,7 +493,7 @@ async function runPriming() {
       if (timeoutCount >= FAIL_LIMIT) {
         img.classList.add("hidden");
         document.getElementById("primingStatus").textContent = "";
-        alert("무응답이 누적되어 실험이 종료되었습니다.\n창을 닫아주세요.");
+        alert("녹음 실패가 누적되어 실험이 종료되었습니다.\n창을 닫아주세요.");
         // ★ 새로고침하지 않고 종료 화면으로
         showScreen("contact");
         document.getElementById("contactValue").placeholder = "실험이 중단되었습니다";
@@ -576,3 +581,4 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
