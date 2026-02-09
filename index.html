@@ -102,6 +102,8 @@
 
 <div class="card hidden" id="screen-contact">
   <h2>종료</h2>
+  <p class="note">실험이 완료되었습니다.<br>
+  제출해주신 연락처로 10일 내외로 실험 참여 보상을 전송해드리겠습니다.</p>
   <input id="contactValue" placeholder="연락처">
   <button id="btnSubmitContact">제출</button>
 </div>
@@ -508,9 +510,22 @@ async function runPriming() {
       event: "trial",
       pid: session.pid,
       listNum: listNumUsed,
-      group: assignedGroup,
+      primeModeGroup: assignedGroup, 
       trialIdx: i + 1,
-      onset: rec.onset,
+      sharedUnit: trial.sharedUnit || "",
+      primeItemId: trial.primeId,
+      targetItemId: trial.targetId,
+      primeWord: primeItem ? primeItem.word : "",
+      targetWord: targetItem ? targetItem.word : "",
+      animacy_response: animacyResponse,  // ★ 실제 측정값
+      animacy_rt_ms: animacyRT,  // ★ 실제 측정값
+      prime_voiceKeyRT_ms: primeRec ? primeRec.onset : null,  // ★ overt 조건 prime RT
+      prime_spoken: primeRec && primeRec.onset !== null ? "yes" : "no",  
+      prime_check_reason: "",  // 추가 체크 사유 (필요시)
+      target_attempts: 1,  // target 시도 횟수
+      target_gaveUp: false,  // target 포기 여부
+      target_display_ts: Date.now(),  // target 화면 표시 시각
+      target_voiceKeyRT_ms: rec.onset,  // ★ target RT
       timeout: rec.onset === null,
       trialId: trial.pair_id
     }).catch(err => {
@@ -572,7 +587,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
         contact_value: document.getElementById("contactValue").value
       })
     });
-    alert("완료되었습니다!");
+    alert("참여해주셔서 감사합니다!");
     location.href = "about:blank";
   } catch (err) {
     console.error("❌ 연락처 저장 에러:", err);
@@ -582,6 +597,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
