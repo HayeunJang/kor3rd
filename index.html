@@ -329,7 +329,7 @@ function runNextAFC() {
 
 function finishAFC() {
   const acc = afcScore / afcCurrentList.length;
-  const passed = acc >= AFC_THRESHOLD;
+  const AFC_THRESHOLD = isRemedial ? 0.98 : 1.0;
   const accPct = Math.round(acc * 100);
   const terminatedEarly = !passed && isRemedial;
   
@@ -350,9 +350,9 @@ function finishAFC() {
       is_remedial: isRemedial,
       terminated_early: terminatedEarly,
       termination_reason: terminatedEarly ? "test_failed_after_remedial" : "",
-      notes: passed
-        ? "test_passed"
-        : (isRemedial ? "experiment_aborted" : "test_failed_first")
+      notes: isRemedial
+        ? (acc >= AFC_THRESHOLD ? "remedial_passed" : "remedial_failed")
+        : (acc >= AFC_THRESHOLD ? "first_passed" : "first_failed")
     }).catch(err => {
       console.error("❌ AFC 결과 저장 에러:", err);
     });
@@ -361,7 +361,7 @@ function finishAFC() {
   document.getElementById("btnAfcRemedial").classList.add("hidden");
   document.getElementById("btnAfcProceed").classList.add("hidden");
   
-  if (passed) {
+  if (acc >= AFC_THRESHOLD) {
     document.getElementById("btnAfcProceed").classList.remove("hidden");
   } else {
     if (!isRemedial && afcWrongItems.length > 0) {
@@ -370,7 +370,10 @@ function finishAFC() {
     } else {
       // ★ 재학습 후에도 실패: 실험 종료
       document.getElementById("afcResultText").innerHTML += 
-        "<br><br><strong style='color:#d32f2f;'>테스트를 통과하지 못했습니다.<br>실험이 종료되었습니다. 창을 닫아주세요.</strong>";
+        "<br><br><strong style='color:#d32f2f;'>테스트를 통과하지 못했습니다.<br>실험이 종료되었습니다.</strong>";
+      
+      // alert로 안내 후 함수 종료
+      alert("⚠️ 실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
       return;
     }
   }
@@ -579,7 +582,7 @@ async function runPriming() {
         // 실험 종료 안내
         img.classList.add("hidden");
         document.getElementById("primingStatus").textContent = "";
-        alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
+        alert("⚠️ 실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
         location.href = "about:blank";
         return;
       }
@@ -712,6 +715,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
