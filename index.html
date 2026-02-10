@@ -315,7 +315,7 @@ function finishAFC() {
       is_remedial: isRemedial,
       terminated_early: terminatedEarly,
       termination_reason: terminatedEarly ? "afc_failed_after_remedial" : "",
-      note: passed
+      notes: passed
         ? "test_passed"
         : (isRemedial ? "test_failed_after_remedial" : "test_failed_first")
     }).catch(err => {
@@ -539,7 +539,7 @@ async function runPriming() {
           phase: "timeout",
           timeout_count: timeoutCount,      
           terminated_early: true,
-          termination_reason: "timeoutCount_over_FailLimit"
+          termination_reason: "timeoutCount_over_FailLimit",
           notes: "experiment_aborted"
         }).catch(console.error);
         // ★ 새로고침하지 않고 종료 화면으로
