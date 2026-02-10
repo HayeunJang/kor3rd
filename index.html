@@ -371,6 +371,7 @@ function finishAFC() {
       // ★ 재학습 후에도 실패: 실험 종료
       document.getElementById("afcResultText").innerHTML += 
         "<br><br><strong style='color:#d32f2f;'>테스트를 통과하지 못했습니다.<br>실험이 종료되었습니다. 창을 닫아주세요.</strong>";
+      return;
     }
   }
 }
@@ -700,6 +701,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
     });
     alert("참여해주셔서 감사합니다!");
     location.href = "about:blank";
+    return;
   } catch (err) {
 
     
@@ -710,6 +712,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
