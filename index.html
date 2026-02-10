@@ -314,10 +314,10 @@ function finishAFC() {
       accuracy: accPct,
       is_remedial: isRemedial,
       terminated_early: terminatedEarly,
-      termination_reason: terminatedEarly ? "afc_failed_after_remedial" : "",
+      termination_reason: terminatedEarly ? "test_failed_after_remedial" : "",
       notes: passed
         ? "test_passed"
-        : (isRemedial ? "test_failed_after_remedial" : "test_failed_first")
+        : (isRemedial ? "experiment_aborted" : "test_failed_first")
     }).catch(err => {
       console.error("❌ AFC 결과 저장 에러:", err);
     });
@@ -675,6 +675,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
