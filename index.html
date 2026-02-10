@@ -579,7 +579,7 @@ async function runPriming() {
         img.classList.add("hidden");
         document.getElementById("primingStatus").textContent = "";
         alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
-        
+        location.href = "about:blank";
         return;
       }
     }
@@ -710,6 +710,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
