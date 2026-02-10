@@ -179,7 +179,7 @@ document.getElementById("btnStart").addEventListener("click", async () => {
       .filter(i => usedIds.has(i.itemId))
       .map(i => ({...i, img: "./stim/"+i.img}));
     
-    PRIMING_TRIALS = = pairsData.sort(() => Math.random() - 0.5);
+    PRIMING_TRIALS = pairsData.sort(() => Math.random() - 0.5);
     assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
     
     const participant = {
@@ -654,4 +654,5 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
