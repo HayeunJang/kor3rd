@@ -334,7 +334,7 @@ function finishAFC() {
   
   showScreen("afc-result");
   document.getElementById("afcResultText").innerHTML = 
-    `정답률: ${Math.round(acc*100)}% (${afcScore}/${afcCurrentList.length})<br>${passed ? "✅ 통과" : "❌ 미달"}`;
+    `정답률: ${Math.round(acc*100)}% (${afcScore}/${afcCurrentList.length})<br>${acc >= AFC_THRESHOLD ? "✅ 통과" : "❌ 미달"}`;
 
   // ★ AFC 결과를 서버에 저장
   if (session) {
@@ -712,6 +712,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
