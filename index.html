@@ -331,7 +331,6 @@ function finishAFC() {
   const acc = afcScore / afcCurrentList.length;
   const AFC_THRESHOLD = isRemedial ? 0.98 : 1.0;
   const accPct = Math.round(acc * 100);
-  const terminatedEarly = !passed && isRemedial;
   
   showScreen("afc-result");
   document.getElementById("afcResultText").innerHTML = 
@@ -348,11 +347,10 @@ function finishAFC() {
       phase: "afc",
       accuracy: accPct,
       is_remedial: isRemedial,
-      terminated_early: terminatedEarly,
-      termination_reason: terminatedEarly ? "test_failed_after_remedial" : "",
+      terminated_early: acc < AFC_THRESHOLD,
       notes: isRemedial
-        ? (acc >= AFC_THRESHOLD ? "remedial_passed" : "remedial_failed")
-        : (acc >= AFC_THRESHOLD ? "first_passed" : "first_failed")
+        ? (acc >= AFC_THRESHOLD ? "remedial_passed" : "experiment_aborted_second_test_failed")
+        : (acc >= AFC_THRESHOLD ? "first_passed" : "first_test_failed")
     }).catch(err => {
       console.error("❌ AFC 결과 저장 에러:", err);
     });
@@ -575,8 +573,7 @@ async function runPriming() {
           phase: "timeout",
           timeout_count: timeoutCount,      
           terminated_early: true,
-          termination_reason: "timeoutCount_over_FailLimit",
-          notes: "experiment_aborted"
+          notes: "experiment_aborted_timeoutCount_over_FailLimit"
         }).catch(console.error);
         
         // 실험 종료 안내
@@ -715,6 +712,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
