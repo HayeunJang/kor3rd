@@ -130,7 +130,7 @@ let isRemedial = false;
 
 const FAIL_LIMIT = 10;
 const TOTAL_PRIMING = 108;
-const AFC_THRESHOLD = 0.9;
+const AFC_THRESHOLD = 1;
 
 /* 유틸리티 */
 const showScreen = (s) => { 
@@ -294,6 +294,8 @@ function runNextAFC() {
 function finishAFC() {
   const acc = afcScore / afcCurrentList.length;
   const passed = acc >= AFC_THRESHOLD;
+  const accPct = Math.round(acc * 100);
+  const terminatedEarly = !passed && isRemedial;
   
   showScreen("afc-result");
   document.getElementById("afcResultText").innerHTML = 
@@ -308,9 +310,13 @@ function finishAFC() {
       sessionId: session.sessionId,
       folderId: session.folderId,
       phase: "afc",
-      accuracy: Math.round(acc * 100),  // 퍼센트로
-      notes: passed,
-      is_remedial: isRemedial
+      accuracy: accPct,
+      is_remedial: isRemedial,
+      terminated_early: terminatedEarly,
+      termination_reason: terminatedEarly ? "afc_failed_after_remedial" : "",
+      notes: passed
+        ? "test_passed"
+        : (isRemedial ? "test_failed_after_remedial" : "test_failed_first")
     }).catch(err => {
       console.error("❌ AFC 결과 저장 에러:", err);
     });
@@ -522,6 +528,19 @@ async function runPriming() {
         img.classList.add("hidden");
         document.getElementById("primingStatus").textContent = "";
         alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
+        appendRow({
+          event: "priming_summary",
+          ts_iso: new Date().toISOString(),
+          pid: session.pid,
+          sessionId: session.sessionId,
+          folderId: session.folderId,
+      
+          phase: "timeout",
+          timeout_count: timeoutCount,      
+          terminated_early: true,
+          termination_reason: "timeoutCount_over_FailLimit"
+          notes: "experiment_aborted"
+        }).catch(console.error);
         // ★ 새로고침하지 않고 종료 화면으로
         showScreen("contact");
         document.getElementById("contactValue").placeholder = "녹음 실패 누적: 실험이 종료되었습니다.";
@@ -654,5 +673,6 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
