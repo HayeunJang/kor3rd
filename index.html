@@ -526,9 +526,6 @@ async function runPriming() {
       console.warn(`⚠️ 타임아웃 발생 (${timeoutCount}/${FAIL_LIMIT})`);
       
       if (timeoutCount >= FAIL_LIMIT) {
-        img.classList.add("hidden");
-        document.getElementById("primingStatus").textContent = "";
-        alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
         appendRow({
           event: "priming_summary",
           ts_iso: new Date().toISOString(),
@@ -542,10 +539,12 @@ async function runPriming() {
           termination_reason: "timeoutCount_over_FailLimit",
           notes: "experiment_aborted"
         }).catch(console.error);
-        // ★ 새로고침하지 않고 종료 화면으로
-        showScreen("contact");
-        document.getElementById("contactValue").placeholder = "녹음 실패 누적: 실험이 종료되었습니다.";
-        document.getElementById("btnSubmitContact").disabled = true;
+        
+        // 실험 종료 안내
+        img.classList.add("hidden");
+        document.getElementById("primingStatus").textContent = "";
+        alert("실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
+        
         return;
       }
     }
@@ -667,6 +666,8 @@ document.getElementById("btnSubmitContact").onclick = async () => {
     alert("참여해주셔서 감사합니다!");
     location.href = "about:blank";
   } catch (err) {
+
+    
     console.error("❌ 연락처 저장 에러:", err);
     alert("저장 중 오류가 발생했습니다.");
   }
@@ -674,6 +675,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
