@@ -51,7 +51,7 @@
 
 <div class="card hidden" id="screen-study">
   <h2>학습</h2>
-  <p class="note" id="studyProgress">그림과 단어를 기억하세요. (2회 반복)<br>준비가 되셨다면 아래 '학습 시작' 버튼을 눌러주세요.</p>
+  <p class="note" id="studyProgress">그림과 매칭되는 단어를 기억하세요. (2회 반복)<br>준비가 되셨다면 아래 '학습 시작' 버튼을 눌러주세요.</p>
   <div style="height:380px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
     <div id="fixation" class="hidden" style="font-size:48px;">+</div>
     <img id="studyImg" class="hidden" style="max-width:420px; max-height:320px;">
@@ -103,7 +103,8 @@
 <div class="card hidden" id="screen-contact">
   <h2>종료</h2>
   <p class="note">실험이 완료되었습니다.<br>
-  제출해주신 연락처로 10일 내외로 실험 참여 보상을 전송해드리겠습니다.</p>
+  작성해주신 연락처로 10일 내외로 실험 참여 보상을 전송해드리겠습니다.<br>
+  마지막으로 '제출' 버튼을 누른 후 확인 메시지가 뜰 때까지 잠시만 기다려주세요.</p>
   <input id="contactValue" placeholder="연락처">
   <button id="btnSubmitContact">제출</button>
 </div>
@@ -178,7 +179,7 @@ document.getElementById("btnStart").addEventListener("click", async () => {
       .filter(i => usedIds.has(i.itemId))
       .map(i => ({...i, img: "./stim/"+i.img}));
     
-    PRIMING_TRIALS = pairsData;
+    PRIMING_TRIALS = = pairsData.sort(() => Math.random() - 0.5);
     assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
     
     const participant = {
@@ -297,7 +298,23 @@ function finishAFC() {
   showScreen("afc-result");
   document.getElementById("afcResultText").innerHTML = 
     `정답률: ${Math.round(acc*100)}% (${afcScore}/${afcCurrentList.length})<br>${passed ? "✅ 통과" : "❌ 미달"}`;
-  
+
+  // ★ AFC 결과를 서버에 저장
+  if (session) {
+    appendRow({
+      event: "afc_test",
+      ts_iso: new Date().toISOString(),
+      pid: session.pid,
+      sessionId: session.sessionId,
+      folderId: session.folderId,
+      phase: "afc",
+      accuracy: Math.round(acc * 100),  // 퍼센트로
+      notes: passed,
+      is_remedial: isRemedial
+    }).catch(err => {
+      console.error("❌ AFC 결과 저장 에러:", err);
+    });
+  }
   // 버튼 초기화
   document.getElementById("btnAfcRemedial").classList.add("hidden");
   document.getElementById("btnAfcProceed").classList.add("hidden");
@@ -637,3 +654,4 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
