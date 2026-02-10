@@ -192,6 +192,7 @@ document.getElementById("btnStart").addEventListener("click", async () => {
 
     // 세션 생성 및 참가자 정보 서버 저장
     session = await createSession(participant.nick + "_" + Date.now(), { 
+      phase: "participant",
       primeModeGroup: assignedGroup, 
       listNum: listNumUsed, 
       participant 
@@ -673,6 +674,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
