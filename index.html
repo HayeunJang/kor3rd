@@ -455,21 +455,29 @@ async function runPriming() {
     img.src = "./stim/" + trial.prime_pic;
     img.classList.remove("hidden");
     
+    // Prime 단계 데이터 저장용 변수
+    let primeRec = null;
+    let animacyResponse = "";
+    let animacyRT = null;
+    
     // Prime 조건별 처리
     if (assignedGroup === "overt") {
       document.getElementById("primingStatus").textContent = "그림에 해당하는 단어를 말하세요";
-      await record(3000);
+      primeRec = await record(3000);  // ★ 결과 저장
     } else if (assignedGroup === "nonaming") {
       document.getElementById("primingStatus").textContent = "생물? 무생물?";
       document.getElementById("animacyButtons").classList.remove("hidden");
       
+      const animacyStartTime = performance.now();
       await new Promise(r => {
-        const cleanup = () => {
+        const cleanup = (response) => {
+          animacyResponse = response;
+          animacyRT = Math.round(performance.now() - animacyStartTime);
           document.getElementById("animacyButtons").classList.add("hidden");
           r();
         };
-        document.getElementById("btnAnimate").onclick = cleanup;
-        document.getElementById("btnInanimate").onclick = cleanup;
+        document.getElementById("btnAnimate").onclick = () => cleanup("생물");
+        document.getElementById("btnInanimate").onclick = () => cleanup("무생물");
       });
     } else {
       // covert
@@ -506,43 +514,75 @@ async function runPriming() {
     }
     
     // ★ 데이터 저장 (비동기 처리 - 기다리지 않음)
+    const target_display_ts = new Date().toISOString();
+    
     appendRow({
-      event: "trial",
+      event: "priming_trial",
+      ts_iso: new Date().toISOString(),
       pid: session.pid,
-      listNum: listNumUsed,
-      primeModeGroup: assignedGroup, 
-      trialIdx: i + 1,
+      sessionId: session.sessionId,
+      folderId: session.folderId,
+      phase: "priming",
+      primeModeGroup: assignedGroup,
+      
+      trialIndex_global: i + 1,
+      trialIndex_phase: i + 1,
+      
+      trialId: trial.pair_id,
       sharedUnit: trial.sharedUnit || "",
+      
       primeItemId: trial.primeId,
       targetItemId: trial.targetId,
-      primeWord: primeItem ? primeItem.word : "",
-      targetWord: targetItem ? targetItem.word : "",
-      animacy_response: animacyResponse,  // ★ 실제 측정값
-      animacy_rt_ms: animacyRT,  // ★ 실제 측정값
-      prime_voiceKeyRT_ms: primeRec ? primeRec.onset : null,  // ★ overt 조건 prime RT
-      prime_spoken: primeRec && primeRec.onset !== null ? "yes" : "no",  
-      prime_check_reason: "",  // 추가 체크 사유 (필요시)
-      target_attempts: 1,  // target 시도 횟수
-      target_gaveUp: false,  // target 포기 여부
-      target_display_ts: Date.now(),  // target 화면 표시 시각
-      target_voiceKeyRT_ms: rec.onset,  // ★ target RT
-      timeout: rec.onset === null,
-      trialId: trial.pair_id
+      
+      primeWord: trial.prime || "",  // ★ CSV에서 직접
+      targetWord: trial.target || "",  // ★ CSV에서 직접
+      
+      primeImg: trial.prime_pic || "",
+      targetImg: trial.target_pic || "",
+      
+      target_display_ts: target_display_ts,
+      
+      // RT 정보
+      prime_voiceKeyRT_ms: primeRec ? primeRec.onset : null,
+      target_voiceKeyRT_ms: rec.onset,
+      
+      // no-naming 조작
+      animacy_response: animacyResponse || "",
+      animacy_rt_ms: animacyRT || "",
+      
+      // 오디오 파일 ID
+      target_audio_fileId: `${session.pid}_${trial.pair_id}_target_${Date.now()}`,
+      
+      // 품질/타임아웃
+      timeout: (rec.onset === null),
+      target_attempts: 1,
+      target_gaveUp: false,
+      
+      // prime check
+      prime_spoken: primeRec && primeRec.onset !== null ? "yes" : "no",
+      
+      // 추가 필드
+      notes: rec.onset === null ? "timeout" : ""
     }).catch(err => {
       console.error("❌ 데이터 저장 에러:", err);
     });
     
     // ★ 오디오 업로드 (비동기로 처리)
-    uploadAudioBlob(rec.blob, {
-      pid: session.pid,
-      sessionId: session.sessionId,
-      folderId: session.folderId,
-      filename: `${session.pid}_T${i + 1}.webm`,
-      trialId: trial.pair_id
-    }).catch(err => {
-      uploadFailCount++;
-      console.error(`❌ 오디오 업로드 실패 (${uploadFailCount}):`, err);
-    });
+    if (rec.blob && rec.blob.size > 100 && rec.onset !== null) {
+      uploadAudioBlob(rec.blob, {
+        pid: session.pid,
+        sessionId: session.sessionId,
+        folderId: session.folderId,
+        filename: `${session.pid}_${trial.pair_id}_target_${Date.now()}.webm`,
+        mimeType: "audio/webm",
+        type: "target",
+        trialId: trial.pair_id,
+        phase: "priming"
+      }).catch(err => {
+        uploadFailCount++;
+        console.error(`❌ 오디오 업로드 실패 (${uploadFailCount}):`, err);
+      });
+    }
     
     img.classList.add("hidden");
     document.getElementById("primingStatus").textContent = "";
@@ -597,13 +637,3 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
