@@ -156,7 +156,7 @@ document.getElementById("consentCheck").addEventListener("change", (e) => {
 
 document.getElementById("btnStart").addEventListener("click", async () => {
   try {
-    listNumUsed = Math.floor(Math.random() * 3) + 1;
+    listNumUsed = Math.floor(Math.random() * 4) + 1;
     
     const [itemsData, pairsData] = await Promise.all([
       fetch("./stim/items.csv").then(r => {
@@ -178,8 +178,43 @@ document.getElementById("btnStart").addEventListener("click", async () => {
     STUDY_ITEMS = itemsData
       .filter(i => usedIds.has(i.itemId))
       .map(i => ({...i, img: "./stim/"+i.img}));
+
+    // ★ 연속 trial에서 단어 겹침 최소화하며 섞기
+    function shuffleWithMinOverlap(trials, maxAttempts = 100) {
+      let bestShuffle = [...trials].sort(() => Math.random() - 0.5);
+      let bestOverlapCount = Infinity;
+      
+      // 여러 번 시도해서 가장 겹침이 적은 순서 선택
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        const shuffled = [...trials].sort(() => Math.random() - 0.5);
+        let overlapCount = 0;
+        
+        // 연속된 trial 간 겹침 개수 세기
+        for (let i = 1; i < shuffled.length; i++) {
+          const prev = shuffled[i - 1];
+          const curr = shuffled[i];
+          
+          if (prev.prime === curr.prime || prev.prime === curr.target ||
+              prev.target === curr.prime || prev.target === curr.target) {
+            overlapCount++;
+          }
+        }
+        
+        // 더 나은 순서 발견
+        if (overlapCount < bestOverlapCount) {
+          bestOverlapCount = overlapCount;
+          bestShuffle = shuffled;
+          
+          // 완벽한 순서 발견 시 즉시 종료
+          if (overlapCount === 0) break;
+        }
+      }
+      
+      console.log(`✅ Trial 순서 최적화: ${bestOverlapCount}개 연속 겹침 (${maxAttempts}회 시도)`);
+      return bestShuffle;
+    }
     
-    PRIMING_TRIALS = pairsData.sort(() => Math.random() - 0.5);
+    PRIMING_TRIALS = shuffleWithMinOverlap(pairsData);
     assignedGroup = ["overt", "covert", "nonaming"][Math.floor(Math.random() * 3)];
     
     const participant = {
@@ -675,6 +710,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
