@@ -371,7 +371,7 @@ function finishAFC() {
         "<br><br><strong style='color:#d32f2f;'>테스트를 통과하지 못했습니다.<br>실험이 종료되었습니다.</strong>";
       
       // alert로 안내 후 함수 종료
-      alert("⚠️ 실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
+      alert("⚠️ 오답으로 학습 테스트를 통과하지 못해 실험이 중간 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
       return;
     }
   }
@@ -579,7 +579,7 @@ async function runPriming() {
         // 실험 종료 안내
         img.classList.add("hidden");
         document.getElementById("primingStatus").textContent = "";
-        alert("⚠️ 실험이 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
+        alert("⚠️ 목소리 미감지 및 녹음 실패가 다수 누적되어 실험이 중간 종료되었습니다.\n실험의 특성상 재참여는 불가능합니다.\n창을 닫아주세요.");
         location.href = "about:blank";
         return;
       }
@@ -712,6 +712,7 @@ document.getElementById("btnSubmitContact").onclick = async () => {
 </script>
 </body>
 </html>
+
 
 
 
